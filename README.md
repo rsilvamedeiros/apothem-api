@@ -123,15 +123,19 @@ These are enforced project-wide (mirrored from `apothem-ai/CLAUDE.md`) and apply
 ## Local development
 
 ```bash
+cp .env.example .env
 docker compose -f infra/docker/docker-compose.yml up -d   # Postgres+pgvector, Redis, MinIO
-# then application bootstrap (once scaffolded)
+npm install
+npm run dev                                                # http://localhost:3001/health
 ```
+
+Other useful scripts: `npm run build`, `npm run typecheck`, `npm run lint`, `npm run test`.
 
 APIs external to this stack (LLM providers) continue to be called remotely; nothing about model access is mocked at the infrastructure level, only at the adapter level for tests/CI.
 
 ## Status
 
-Structural scaffold only — module folders exist as placeholders for the build sequence in `apothem-ai/docs/17-roadmap/first-implementation-sequence.md` (Batches 1–3 and part of 5 are this repository's scope). No application code yet.
+**Batch 1 (repository skeleton) in progress.** Node.js/TypeScript project, lint/typecheck/test tooling, env schema validation (`zod`), a minimal Fastify HTTP server with `GET /health`, and local Docker Compose (Postgres+pgvector, Redis, MinIO) are in place. Module folders otherwise hold only placeholder READMEs — see `apothem-ai/docs/17-roadmap/first-implementation-sequence.md` for the rest of the build sequence (Batches 1–3 and part of 5 are this repository's scope).
 
 <a id="adr-008"></a>
 ### Why two repositories

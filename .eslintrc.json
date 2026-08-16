@@ -1,0 +1,38 @@
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module",
+    "project": "./tsconfig.json"
+  },
+  "plugins": ["@typescript-eslint"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "prettier"
+  ],
+  "env": {
+    "node": true,
+    "es2022": true
+  },
+  "rules": {
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "destructuredArrayIgnorePattern": "^_" }
+    ],
+    "@typescript-eslint/consistent-type-imports": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["openai", "@anthropic-ai/*", "@google/*", "@google-cloud/vertexai"],
+            "message": "AI provider SDKs may only be imported from src/infrastructure/ai. See CLAUDE.md."
+          }
+        ]
+      }
+    ]
+  },
+  "ignorePatterns": ["dist", "node_modules"]
+}

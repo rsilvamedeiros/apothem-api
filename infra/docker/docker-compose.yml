@@ -1,0 +1,55 @@
+name: apothem-api
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: apothem
+      POSTGRES_PASSWORD: apothem
+      POSTGRES_DB: apothem
+    ports:
+      - '5432:5432'
+    volumes:
+      - apothem_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U apothem']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - apothem_redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: apothem
+      MINIO_ROOT_PASSWORD: apothem123
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - apothem_minio_data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  apothem_postgres_data:
+  apothem_redis_data:
+  apothem_minio_data:
