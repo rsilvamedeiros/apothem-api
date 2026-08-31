@@ -1,5 +1,5 @@
 {
-  "id": "37dd4501-0a3c-49f2-85c4-0e46483fcbc7",
+  "id": "28424a64-d55a-4fd4-8a9f-17380be1320a",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -103,7 +103,7 @@
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": "'member'"
+          "default": "'operator'"
         },
         "status": {
           "name": "status",
@@ -490,7 +490,9 @@
       "values": [
         "owner",
         "admin",
-        "member"
+        "builder",
+        "operator",
+        "auditor"
       ]
     },
     "public.organization_status": {

@@ -7,7 +7,18 @@ export const organizationStatusEnum = pgEnum('organization_status', [
   'pending_deletion',
 ]);
 
-export const organizationRoleEnum = pgEnum('organization_role', ['owner', 'admin', 'member']);
+/**
+ * Matches apothem-ai/docs/01-product/permissions-matrix.md. Roles are RBAC
+ * defaults; fine-grained checks still go through capability checks in
+ * src/modules/authorization, not direct role comparisons.
+ */
+export const organizationRoleEnum = pgEnum('organization_role', [
+  'owner',
+  'admin',
+  'builder',
+  'operator',
+  'auditor',
+]);
 export const membershipStatusEnum = pgEnum('membership_status', [
   'active',
   'invited',
@@ -37,7 +48,7 @@ export const memberships = pgTable(
     principalId: uuid('principal_id')
       .notNull()
       .references(() => principals.id, { onDelete: 'cascade' }),
-    role: organizationRoleEnum('role').notNull().default('member'),
+    role: organizationRoleEnum('role').notNull().default('operator'),
     status: membershipStatusEnum('status').notNull().default('active'),
     settings: jsonb('settings'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

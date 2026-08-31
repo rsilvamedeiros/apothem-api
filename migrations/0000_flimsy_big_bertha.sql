@@ -1,7 +1,7 @@
 CREATE TYPE "public"."principal_status" AS ENUM('active', 'suspended');--> statement-breakpoint
 CREATE TYPE "public"."principal_type" AS ENUM('user', 'service_account');--> statement-breakpoint
 CREATE TYPE "public"."membership_status" AS ENUM('active', 'invited', 'revoked');--> statement-breakpoint
-CREATE TYPE "public"."organization_role" AS ENUM('owner', 'admin', 'member');--> statement-breakpoint
+CREATE TYPE "public"."organization_role" AS ENUM('owner', 'admin', 'builder', 'operator', 'auditor');--> statement-breakpoint
 CREATE TYPE "public"."organization_status" AS ENUM('active', 'suspended', 'pending_deletion');--> statement-breakpoint
 CREATE TYPE "public"."workspace_status" AS ENUM('active', 'archived');--> statement-breakpoint
 CREATE TABLE "principals" (
@@ -19,7 +19,7 @@ CREATE TABLE "memberships" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"organization_id" uuid NOT NULL,
 	"principal_id" uuid NOT NULL,
-	"role" "organization_role" DEFAULT 'member' NOT NULL,
+	"role" "organization_role" DEFAULT 'operator' NOT NULL,
 	"status" "membership_status" DEFAULT 'active' NOT NULL,
 	"settings" jsonb,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
