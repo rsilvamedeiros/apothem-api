@@ -17,6 +17,6 @@
     "declaration": false,
     "sourceMap": true
   },
-  "include": ["src", "workers", "vitest.config.ts"],
+  "include": ["src", "workers", "database", "vitest.config.ts", "drizzle.config.ts"],
   "exclude": ["dist", "node_modules"]
 }

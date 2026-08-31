@@ -72,6 +72,10 @@ For every non-trivial feature:
 
 Do not test AI features only by "trying the chat". AI behavior requires deterministic contract tests plus evaluation datasets for semantic behavior. New agents/tools should declare expected scenarios, failure behavior and guardrails. Use the mock Model Gateway adapter in tests/CI; only exercise a real provider adapter deliberately (and be aware this incurs real token cost).
 
+## Version control
+
+Never run `git commit` (or `git push`) in this repository unless explicitly asked to in that exact turn. The user always reviews the diff manually and commits it themselves. When work is ready, provide a suggested commit message (English) instead of committing.
+
 ## Definition of done
 
 A feature is not done because the happy path works. At minimum it must have: authorization, validation, error model, auditability, telemetry, tests, migration safety where applicable, and documentation alignment (in `apothem-ai/docs/`).
