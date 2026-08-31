@@ -18,7 +18,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file=.env src/infrastructure/database/migrate.ts",
     "db:seed": "tsx --env-file=.env database/seed.ts",
-    "openapi:generate": "tsx --env-file=.env infra/scripts/generate-openapi.ts"
+    "openapi:generate": "tsx --env-file=.env infra/scripts/generate-openapi.ts",
+    "docs:check-links": "tsx infra/scripts/check-doc-links.ts"
   },
   "dependencies": {
     "@fastify/swagger": "^9.8.1",
@@ -35,9 +36,10 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
+    "globby": "^16.2.4",
     "prettier": "^3.3.3",
     "tsx": "^4.16.5",
     "typescript": "^5.5.4",
-    "vitest": "^2.0.5"
+    "vitest": "^4.1.11"
   }
 }

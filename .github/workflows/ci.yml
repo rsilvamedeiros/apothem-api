@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    name: Lint, typecheck, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build
+      # Fails only when the sibling apothem-ai checkout is present (see
+      # infra/scripts/check-doc-links.ts) — a no-op here since apothem-api is
+      # checked out standalone, kept for local/dev-machine use.
+      - run: npm run docs:check-links
+
+  migration:
+    name: Migration test on a clean database
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: apothem
+          POSTGRES_PASSWORD: apothem
+          POSTGRES_DB: apothem
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U apothem"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://apothem:apothem@localhost:5432/apothem
+      REDIS_URL: redis://localhost:6379
+      STORAGE_ENDPOINT: http://localhost:9000
+      STORAGE_ACCESS_KEY_ID: apothem
+      STORAGE_SECRET_ACCESS_KEY: apothem123
+      STORAGE_BUCKET: apothem-dev
+      AUTH_SECRET: ci-only-placeholder-secret-value
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # npm run db:migrate/db:seed use `tsx --env-file=.env` for local-dev
+      # convenience; materialize the job's env vars into .env so the same
+      # scripts work unchanged in CI.
+      - run: printenv | grep -E '^(NODE_ENV|DATABASE_URL|REDIS_URL|STORAGE_|AUTH_SECRET)=' > .env
+      # Fails if the committed migrations/ don't match the current schema —
+      # a drift check, not a codegen step (CI never commits generated files).
+      - run: npm run db:generate
+      - run: |
+          if ! git diff --exit-code migrations/; then
+            echo "Committed migrations are out of date — run 'npm run db:generate' and commit the result."
+            exit 1
+          fi
+      - run: npm run db:migrate
+      # Proves the fresh schema is actually usable end-to-end, not just that the SQL applies.
+      - run: npm run db:seed
+
+  security:
+    name: Dependency security scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Baseline: fail on high/critical. Known moderate findings are dev-only
+      # tooling (drizzle-kit's bundled esbuild) with no upstream fix yet.
+      - run: npm audit --audit-level=high

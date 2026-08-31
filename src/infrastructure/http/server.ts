@@ -11,8 +11,7 @@ import { workspaceRoutes } from '../../modules/workspaces/presentation/http/work
 /**
  * Transport wiring only. Route handlers must delegate to module
  * application services — no business logic here.
- */
-/**
+ *
  * `services` is injectable so tests can exercise real route/middleware
  * wiring against fake application services without a database — see
  * organizations.routes.test.ts. Production boot (main/index.ts) always lets
@@ -20,8 +19,24 @@ import { workspaceRoutes } from '../../modules/workspaces/presentation/http/work
  */
 export async function buildServer(env: Env, db: Database, services?: AppServices): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: env.NODE_ENV !== 'test',
+    logger: {
+      enabled: env.NODE_ENV !== 'test',
+      // Correlation id (request.id) is included by Fastify's default request
+      // log serializer; redact anything that could carry a credential — see
+      // observability-logging-tracing.md ("minimizing sensitive content").
+      redact: {
+        paths: ['req.headers.authorization', 'req.headers["x-principal-id"]'],
+        censor: '[redacted]',
+      },
+    },
     genReqId: () => crypto.randomUUID(),
+  });
+
+  // Echoed back so a client/log aggregator can correlate its own trace with
+  // the server-side request log and any error response's requestId field.
+  app.addHook('onSend', async (request, reply, payload) => {
+    reply.header('x-request-id', request.id);
+    return payload;
   });
 
   app.setErrorHandler(errorHandler);
