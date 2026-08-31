@@ -1,12 +1,13 @@
 import { and, eq } from 'drizzle-orm';
 import type { Database } from '../../../infrastructure/database/client.js';
 import { memberships, type Membership, type NewMembership } from './schema.js';
+import type { MembershipPort } from '../application/membership.port.js';
 
 /**
  * All lookups require organizationId — membership rows are never resolved
  * by id alone so a caller cannot probe another tenant's membership by guessing ids.
  */
-export class MembershipRepository {
+export class MembershipRepository implements MembershipPort {
   constructor(private readonly db: Database) {}
 
   async findByPrincipalInOrganization(

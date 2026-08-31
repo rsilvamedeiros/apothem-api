@@ -1,12 +1,13 @@
 import { and, eq } from 'drizzle-orm';
 import type { Database } from '../../../infrastructure/database/client.js';
 import { workspaceMemberships, type NewWorkspaceMembership, type WorkspaceMembership } from './schema.js';
+import type { WorkspaceMembershipPort } from '../application/workspace-membership.port.js';
 
 /**
  * Scoped by workspaceId, which itself only resolves within an organization
  * (see WorkspaceRepository) — chaining keeps every read tenant-safe.
  */
-export class WorkspaceMembershipRepository {
+export class WorkspaceMembershipRepository implements WorkspaceMembershipPort {
   constructor(private readonly db: Database) {}
 
   async findByMembershipInWorkspace(

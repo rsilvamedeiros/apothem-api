@@ -17,13 +17,16 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file=.env src/infrastructure/database/migrate.ts",
-    "db:seed": "tsx --env-file=.env database/seed.ts"
+    "db:seed": "tsx --env-file=.env database/seed.ts",
+    "openapi:generate": "tsx --env-file=.env infra/scripts/generate-openapi.ts"
   },
   "dependencies": {
+    "@fastify/swagger": "^9.8.1",
     "drizzle-orm": "^0.45.2",
-    "fastify": "^4.28.1",
+    "fastify": "^5.12.1",
     "postgres": "^3.4.9",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
     "@types/node": "^20.14.15",

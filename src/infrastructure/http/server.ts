@@ -1,14 +1,41 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import swagger from '@fastify/swagger';
+import { sql } from 'drizzle-orm';
 import type { Env } from './env.js';
+import type { Database } from '../database/client.js';
+import { buildAppServices, type AppServices } from './app-services.js';
+import { errorHandler } from './error-handler.js';
+import { organizationRoutes } from '../../modules/organizations/presentation/http/organizations.routes.js';
+import { workspaceRoutes } from '../../modules/workspaces/presentation/http/workspaces.routes.js';
 
 /**
  * Transport wiring only. Route handlers must delegate to module
  * application services — no business logic here.
  */
-export function buildServer(_env: Env): FastifyInstance {
+/**
+ * `services` is injectable so tests can exercise real route/middleware
+ * wiring against fake application services without a database — see
+ * organizations.routes.test.ts. Production boot (main/index.ts) always lets
+ * it default to the Drizzle-backed services built from `db`.
+ */
+export async function buildServer(env: Env, db: Database, services?: AppServices): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: true,
+    logger: env.NODE_ENV !== 'test',
     genReqId: () => crypto.randomUUID(),
+  });
+
+  app.setErrorHandler(errorHandler);
+
+  await app.register(swagger, {
+    openapi: {
+      openapi: '3.0.3',
+      info: {
+        title: 'APOTHEM API',
+        description: 'Identity, organizations, workspaces, agents, knowledge, connect, flow, approvals, audit.',
+        version: '0.1.0',
+      },
+      servers: [{ url: 'https://api.apothemai.com.br', description: 'Production' }],
+    },
   });
 
   app.get('/health', async () => ({
@@ -16,6 +43,29 @@ export function buildServer(_env: Env): FastifyInstance {
     service: 'apothem-api',
     timestamp: new Date().toISOString(),
   }));
+
+  app.get('/ready', async (_request, reply) => {
+    try {
+      await db.execute(sql`select 1`);
+      return { status: 'ready' };
+    } catch (error) {
+      app.log.error({ err: error }, 'Readiness check failed: database unreachable');
+      reply.status(503);
+      return { status: 'not_ready' };
+    }
+  });
+
+  app.get('/v1/openapi.json', async () => app.swagger());
+
+  const resolvedServices = services ?? buildAppServices(db);
+  await app.register(organizationRoutes, { services: resolvedServices });
+  await app.register(workspaceRoutes, { services: resolvedServices });
+
+  if (env.NODE_ENV === 'production') {
+    app.log.warn(
+      'AuthenticationPort is still the DevHeaderAuthenticator bootstrap adapter — replace with self-hosted OIDC before real production use (ADR-009).',
+    );
+  }
 
   return app;
 }

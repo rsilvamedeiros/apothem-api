@@ -135,13 +135,14 @@ APIs external to this stack (LLM providers) continue to be called remotely; noth
 
 ## Status
 
-**Batch 1 (repository skeleton) complete. Batch 2 (persistence) and Batch 3 (identity/authorization) complete; Batch 4 (delivery surfaces) not started.**
+**Batches 1–4 complete** (repository skeleton, persistence, identity/authorization, delivery surfaces). Batch 5 (CI/operations) not started.
 
 - Batch 1: Node.js/TypeScript project, lint/typecheck/test tooling, env schema validation (`zod`), a minimal Fastify HTTP server with `GET /health`, and local Docker Compose (Postgres+pgvector, Redis, MinIO).
 - Batch 2: Drizzle ORM wired to PostgreSQL; schema and tenant-scoped repositories for principals, organizations, memberships, workspaces and workspace memberships; initial migration; idempotent demo seed (`npm run db:seed`).
 - Batch 3: `AuthenticationPort` boundary with a bootstrap dev-only header adapter (`DevHeaderAuthenticator` — not for production, no cryptographic verification, to be replaced by self-hosted OIDC per ADR-009); `TenantContextResolver` that derives organization/workspace scope only from server-side membership state, never from a client-supplied id alone; capability-based `AuthorizationService` implementing the role/capability matrix from `apothem-ai/docs/01-product/permissions-matrix.md`; cross-tenant/IDOR regression tests.
+- Batch 4: `GET /ready` (pings the database, `GET /health` stays a pure liveness check); `POST /v1/organizations`, `GET /v1/organizations/:organizationId`, `POST /v1/organizations/:organizationId/workspaces`, `GET /v1/organizations/:organizationId/workspaces`, `GET /v1/organizations/:organizationId/workspaces/:workspaceId` — all going through TenantContextResolver + AuthorizationService; normalized error shape with request-id correlation (`src/infrastructure/http/error-handler.ts`); an `AuditPort` backed by an append-only `audit_events` table, emitting `organization.created`, `membership.created` and `workspace.created`; an OpenAPI 3.0 spec generated from the same zod schemas that validate requests, served live at `GET /v1/openapi.json` and committed at `openapi/openapi.json` (`npm run openapi:generate`) for `apothem-ai/packages/api-client`.
 
-See `apothem-ai/docs/17-roadmap/first-implementation-sequence.md` for the rest of the build sequence (Batches 1–3 and part of 5 are this repository's scope). No HTTP routes consume the authorization stack yet — that starts in Batch 4.
+See `apothem-ai/docs/17-roadmap/first-implementation-sequence.md` for the rest of the build sequence (Batches 1–3 and part of 5 are this repository's scope; Batch 4's API is this repository's scope, its web-shell/api-client half is `apothem-ai`'s).
 
 <a id="adr-008"></a>
 ### Why two repositories

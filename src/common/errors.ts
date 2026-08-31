@@ -17,6 +17,10 @@ export abstract class AppError extends Error {
   }
 }
 
+export class InvalidInputError extends AppError {
+  readonly kind = 'invalid_input' as const;
+}
+
 export class UnauthenticatedError extends AppError {
   readonly kind = 'unauthenticated' as const;
 }

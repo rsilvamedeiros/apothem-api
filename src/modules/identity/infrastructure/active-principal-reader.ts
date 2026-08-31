@@ -1,10 +1,10 @@
 import type { PrincipalReaderPort } from '../application/principal-reader.port.js';
 import type { AuthenticatedPrincipal } from '../application/principal.js';
-import type { PrincipalRepository } from './principal.repository.js';
+import type { PrincipalPort } from '../application/principal.port.js';
 
-/** Adapts PrincipalRepository to PrincipalReaderPort, excluding suspended principals. */
+/** Adapts a PrincipalPort to PrincipalReaderPort, excluding suspended principals. */
 export class ActivePrincipalReader implements PrincipalReaderPort {
-  constructor(private readonly principals: PrincipalRepository) {}
+  constructor(private readonly principals: PrincipalPort) {}
 
   async findById(principalId: string): Promise<AuthenticatedPrincipal | undefined> {
     const principal = await this.principals.findById(principalId);

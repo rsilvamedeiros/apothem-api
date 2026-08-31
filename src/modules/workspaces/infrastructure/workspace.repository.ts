@@ -1,12 +1,13 @@
 import { and, eq } from 'drizzle-orm';
 import type { Database } from '../../../infrastructure/database/client.js';
 import { workspaces, type NewWorkspace, type Workspace } from './schema.js';
+import type { WorkspacePort } from '../application/workspace.port.js';
 
 /**
  * Every lookup requires organizationId so a workspace from another tenant can
  * never be resolved by a bare workspace id — see tenant-isolation.md.
  */
-export class WorkspaceRepository {
+export class WorkspaceRepository implements WorkspacePort {
   constructor(private readonly db: Database) {}
 
   async findById(organizationId: string, workspaceId: string): Promise<Workspace | undefined> {

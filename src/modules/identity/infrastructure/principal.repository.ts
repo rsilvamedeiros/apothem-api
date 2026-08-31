@@ -1,8 +1,9 @@
 import { eq } from 'drizzle-orm';
 import type { Database } from '../../../infrastructure/database/client.js';
 import { principals, type NewPrincipal, type Principal } from './schema.js';
+import type { PrincipalPort } from '../application/principal.port.js';
 
-export class PrincipalRepository {
+export class PrincipalRepository implements PrincipalPort {
   constructor(private readonly db: Database) {}
 
   async findById(principalId: string): Promise<Principal | undefined> {

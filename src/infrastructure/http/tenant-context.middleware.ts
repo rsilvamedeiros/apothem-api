@@ -1,40 +1,45 @@
 import type { FastifyRequest } from 'fastify';
-import { UnauthenticatedError, ForbiddenError } from '../../common/errors.js';
+import { UnauthenticatedError } from '../../common/errors.js';
 import type { AuthenticationPort } from '../../modules/identity/application/authentication.port.js';
+import type { AuthenticatedPrincipal } from '../../modules/identity/application/principal.js';
 import type { TenantContextResolver } from '../../modules/authorization/application/tenant-context-resolver.js';
 import type { TenantContext } from '../../modules/authorization/application/tenant-context.js';
-
-export interface TenantResolutionDeps {
-  authenticator: AuthenticationPort;
-  tenantContextResolver: TenantContextResolver;
-}
 
 function headerValue(value: string | string[] | undefined): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
 /**
- * Transport-layer plumbing only: reads the credential and requested
- * organization/workspace scope off the request. Every one of those values is
- * still re-verified against server-side membership by TenantContextResolver
- * — this function never hands out a TenantContext on the strength of the
- * headers alone.
+ * Bootstrap credential extraction: the `x-principal-id` header IS the
+ * credential for the DevHeaderAuthenticator (see identity/infrastructure) and
+ * will be replaced by a real session/bearer-token extraction once self-hosted
+ * OIDC lands (ADR-009) — routes only depend on AuthenticationPort, so that
+ * swap does not touch this call site's callers.
  */
-export async function resolveTenantContext(
+export async function authenticateRequest(
   request: FastifyRequest,
-  deps: TenantResolutionDeps,
-): Promise<TenantContext> {
+  authenticator: AuthenticationPort,
+): Promise<AuthenticatedPrincipal> {
   const credential = headerValue(request.headers['x-principal-id']);
-  const principal = await deps.authenticator.authenticate(credential);
+  const principal = await authenticator.authenticate(credential);
   if (!principal) {
     throw new UnauthenticatedError('Missing or invalid credentials');
   }
+  return principal;
+}
 
-  const organizationId = headerValue(request.headers['x-organization-id']);
-  if (!organizationId) {
-    throw new ForbiddenError('Missing organization scope');
-  }
-
-  const workspaceId = headerValue(request.headers['x-workspace-id']);
-  return deps.tenantContextResolver.resolve(principal, organizationId, workspaceId);
+/**
+ * organizationId/workspaceId come from the route path (opaque resource ids),
+ * not from a header — resolveTenantContext still re-verifies them against
+ * server-side membership via TenantContextResolver before trusting them.
+ */
+export async function resolveTenantContext(
+  request: FastifyRequest,
+  authenticator: AuthenticationPort,
+  tenantContextResolver: TenantContextResolver,
+  organizationId: string,
+  workspaceId?: string,
+): Promise<TenantContext> {
+  const principal = await authenticateRequest(request, authenticator);
+  return tenantContextResolver.resolve(principal, organizationId, workspaceId);
 }
