@@ -11,6 +11,10 @@ import { TenantContextResolver } from '../../modules/authorization/application/t
 import { AuthorizationService } from '../../modules/authorization/application/authorization.service.js';
 import { OrganizationService } from '../../modules/organizations/application/organization.service.js';
 import { WorkspaceService } from '../../modules/workspaces/application/workspace.service.js';
+import { AgentRepository } from '../../modules/agents/infrastructure/agent.repository.js';
+import { AgentDraftRepository } from '../../modules/agents/infrastructure/agent-draft.repository.js';
+import { AgentVersionRepository } from '../../modules/agents/infrastructure/agent-version.repository.js';
+import { AgentService } from '../../modules/agents/application/agent.service.js';
 import type { AuthenticationPort } from '../../modules/identity/application/authentication.port.js';
 
 export interface AppServices {
@@ -19,6 +23,7 @@ export interface AppServices {
   authorizationService: AuthorizationService;
   organizationService: OrganizationService;
   workspaceService: WorkspaceService;
+  agentService: AgentService;
 }
 
 /**
@@ -52,5 +57,12 @@ export function buildAppServices(db: Database): AppServices {
       auditLog,
     ),
     workspaceService: new WorkspaceService(workspaces, authorizationService, auditLog),
+    agentService: new AgentService(
+      new AgentRepository(db),
+      new AgentDraftRepository(db),
+      new AgentVersionRepository(db),
+      authorizationService,
+      auditLog,
+    ),
   };
 }

@@ -12,6 +12,10 @@ import type { OrganizationPort } from '../../../modules/organizations/applicatio
 import type { MembershipPort } from '../../../modules/organizations/application/membership.port.js';
 import type { WorkspacePort } from '../../../modules/workspaces/application/workspace.port.js';
 import type { WorkspaceMembershipPort } from '../../../modules/workspaces/application/workspace-membership.port.js';
+import type { Agent, NewAgent, AgentDraft, NewAgentDraft, AgentVersion, NewAgentVersion } from '../../../modules/agents/infrastructure/schema.js';
+import type { AgentPort } from '../../../modules/agents/application/agent.port.js';
+import type { AgentDraftPatch, AgentDraftPort } from '../../../modules/agents/application/agent-draft.port.js';
+import type { AgentVersionPort } from '../../../modules/agents/application/agent-version.port.js';
 
 /**
  * In-memory stand-ins for the Drizzle repositories, structurally compatible
@@ -168,6 +172,117 @@ export class FakeWorkspaceMembershipRepository implements WorkspaceMembershipPor
     };
     this.rows.push(row);
     return row;
+  }
+}
+
+export class FakeAgentRepository implements AgentPort {
+  private readonly rows: Agent[] = [];
+
+  async findById(workspaceId: string, agentId: string): Promise<Agent | undefined> {
+    return this.rows.find((row) => row.workspaceId === workspaceId && row.id === agentId);
+  }
+
+  async findBySlug(workspaceId: string, slug: string): Promise<Agent | undefined> {
+    return this.rows.find((row) => row.workspaceId === workspaceId && row.slug === slug);
+  }
+
+  async listByWorkspace(workspaceId: string): Promise<Agent[]> {
+    return this.rows.filter((row) => row.workspaceId === workspaceId);
+  }
+
+  async create(input: NewAgent): Promise<Agent> {
+    const row: Agent = {
+      id: input.id ?? nextId('agent'),
+      organizationId: input.organizationId,
+      workspaceId: input.workspaceId,
+      name: input.name,
+      slug: input.slug,
+      description: input.description ?? null,
+      status: input.status ?? 'draft',
+      activeVersionId: input.activeVersionId ?? null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.rows.push(row);
+    return row;
+  }
+
+  async updateLifecycle(agentId: string, patch: { status?: Agent['status']; activeVersionId?: string }): Promise<Agent> {
+    const row = this.rows.find((r) => r.id === agentId);
+    if (!row) {
+      throw new Error(`Agent ${agentId} not found`);
+    }
+    Object.assign(row, patch, { updatedAt: new Date() });
+    return row;
+  }
+}
+
+export class FakeAgentDraftRepository implements AgentDraftPort {
+  private readonly rows: AgentDraft[] = [];
+
+  async findByAgentId(agentId: string): Promise<AgentDraft | undefined> {
+    return this.rows.find((row) => row.agentId === agentId);
+  }
+
+  async create(input: NewAgentDraft): Promise<AgentDraft> {
+    const row: AgentDraft = {
+      id: input.id ?? nextId('agent-draft'),
+      agentId: input.agentId,
+      instructions: input.instructions ?? '',
+      modelPolicy: input.modelPolicy ?? {},
+      knowledgeBindings: input.knowledgeBindings ?? [],
+      toolBindings: input.toolBindings ?? [],
+      memoryPolicy: input.memoryPolicy ?? {},
+      guardrails: input.guardrails ?? {},
+      updatedAt: new Date(),
+    };
+    this.rows.push(row);
+    return row;
+  }
+
+  async update(agentId: string, patch: AgentDraftPatch): Promise<AgentDraft> {
+    const row = this.rows.find((r) => r.agentId === agentId);
+    if (!row) {
+      throw new Error(`Draft for agent ${agentId} not found`);
+    }
+    Object.assign(row, patch, { updatedAt: new Date() });
+    return row;
+  }
+}
+
+export class FakeAgentVersionRepository implements AgentVersionPort {
+  private readonly rows: AgentVersion[] = [];
+
+  async create(input: NewAgentVersion): Promise<AgentVersion> {
+    const row: AgentVersion = {
+      id: input.id ?? nextId('agent-version'),
+      agentId: input.agentId,
+      versionNumber: input.versionNumber,
+      instructions: input.instructions,
+      modelPolicy: input.modelPolicy,
+      knowledgeBindings: input.knowledgeBindings,
+      toolBindings: input.toolBindings,
+      memoryPolicy: input.memoryPolicy,
+      guardrails: input.guardrails,
+      checksum: input.checksum,
+      publishedByPrincipalId: input.publishedByPrincipalId,
+      createdAt: new Date(),
+    };
+    this.rows.push(row);
+    return row;
+  }
+
+  async findById(agentId: string, versionId: string): Promise<AgentVersion | undefined> {
+    return this.rows.find((row) => row.agentId === agentId && row.id === versionId);
+  }
+
+  async listByAgent(agentId: string): Promise<AgentVersion[]> {
+    return this.rows.filter((row) => row.agentId === agentId).sort((a, b) => b.versionNumber - a.versionNumber);
+  }
+
+  async findLatestVersionNumber(agentId: string): Promise<number> {
+    const versions = await this.listByAgent(agentId);
+    return versions[0]?.versionNumber ?? 0;
   }
 }
 

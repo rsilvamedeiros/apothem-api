@@ -8,3 +8,4 @@ export * from '../../modules/identity/infrastructure/schema.js';
 export * from '../../modules/organizations/infrastructure/schema.js';
 export * from '../../modules/workspaces/infrastructure/schema.js';
 export * from '../../modules/audit/infrastructure/schema.js';
+export * from '../../modules/agents/infrastructure/schema.js';

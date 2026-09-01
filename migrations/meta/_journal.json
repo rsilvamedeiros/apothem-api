@@ -15,6 +15,13 @@
       "when": 1788206934610,
       "tag": "0001_flippant_morbius",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788233607760,
+      "tag": "0002_complex_inertia",
+      "breakpoints": true
     }
   ]
 }

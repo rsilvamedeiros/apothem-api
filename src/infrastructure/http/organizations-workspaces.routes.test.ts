@@ -3,21 +3,8 @@ import type { FastifyInstance } from 'fastify';
 import { buildServer } from './server.js';
 import { loadEnv } from './env.js';
 import type { Database } from '../database/client.js';
-import type { AppServices } from './app-services.js';
-import { DevHeaderAuthenticator } from '../../modules/identity/infrastructure/dev-header-authenticator.js';
-import { ActivePrincipalReader } from '../../modules/identity/infrastructure/active-principal-reader.js';
-import { TenantContextResolver } from '../../modules/authorization/application/tenant-context-resolver.js';
-import { AuthorizationService } from '../../modules/authorization/application/authorization.service.js';
-import { OrganizationService } from '../../modules/organizations/application/organization.service.js';
-import { WorkspaceService } from '../../modules/workspaces/application/workspace.service.js';
-import {
-  FakeAuditLog,
-  FakeMembershipRepository,
-  FakeOrganizationRepository,
-  FakePrincipalRepository,
-  FakeWorkspaceMembershipRepository,
-  FakeWorkspaceRepository,
-} from './__fixtures__/fake-repositories.js';
+import { buildTestServices } from './__fixtures__/build-test-services.js';
+import type { FakeAuditLog, FakePrincipalRepository } from './__fixtures__/fake-repositories.js';
 
 const env = loadEnv({
   NODE_ENV: 'test',
@@ -29,26 +16,6 @@ const env = loadEnv({
   STORAGE_BUCKET: 'unused',
   AUTH_SECRET: 'unused-secret-value',
 });
-
-function buildTestServices(): { services: AppServices; principals: FakePrincipalRepository; audit: FakeAuditLog } {
-  const principals = new FakePrincipalRepository();
-  const memberships = new FakeMembershipRepository();
-  const workspaces = new FakeWorkspaceRepository();
-  const workspaceMemberships = new FakeWorkspaceMembershipRepository();
-  const organizations = new FakeOrganizationRepository();
-  const audit = new FakeAuditLog();
-  const authorizationService = new AuthorizationService();
-
-  const services: AppServices = {
-    authenticator: new DevHeaderAuthenticator(new ActivePrincipalReader(principals)),
-    tenantContextResolver: new TenantContextResolver(memberships, workspaces, workspaceMemberships),
-    authorizationService,
-    organizationService: new OrganizationService(organizations, memberships, authorizationService, audit),
-    workspaceService: new WorkspaceService(workspaces, authorizationService, audit),
-  };
-
-  return { services, principals, audit };
-}
 
 describe('organizations/workspaces HTTP routes', () => {
   let app: FastifyInstance;

@@ -11,6 +11,7 @@ export const CAPABILITIES = [
   'organization.billing.read',
   'workspace.membership.manage',
   'workspace.membership.read',
+  'agent.read',
   'agent.draft.write',
   'agent.publish',
   'knowledge.manage',

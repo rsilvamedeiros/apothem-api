@@ -7,6 +7,7 @@ import { buildAppServices, type AppServices } from './app-services.js';
 import { errorHandler } from './error-handler.js';
 import { organizationRoutes } from '../../modules/organizations/presentation/http/organizations.routes.js';
 import { workspaceRoutes } from '../../modules/workspaces/presentation/http/workspaces.routes.js';
+import { agentRoutes } from '../../modules/agents/presentation/http/agents.routes.js';
 
 /**
  * Transport wiring only. Route handlers must delegate to module
@@ -75,6 +76,7 @@ export async function buildServer(env: Env, db: Database, services?: AppServices
   const resolvedServices = services ?? buildAppServices(db);
   await app.register(organizationRoutes, { services: resolvedServices });
   await app.register(workspaceRoutes, { services: resolvedServices });
+  await app.register(agentRoutes, { services: resolvedServices });
 
   if (env.NODE_ENV === 'production') {
     app.log.warn(
