@@ -34,5 +34,13 @@
       }
     ]
   },
-  "ignorePatterns": ["dist", "node_modules"]
+  "ignorePatterns": ["dist", "node_modules"],
+  "overrides": [
+    {
+      "files": ["src/infrastructure/ai/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ]
 }
