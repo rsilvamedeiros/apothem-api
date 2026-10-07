@@ -3,6 +3,7 @@ import { ActivePrincipalReader } from '../../../modules/identity/infrastructure/
 import { TenantContextResolver } from '../../../modules/authorization/application/tenant-context-resolver.js';
 import { AuthorizationService } from '../../../modules/authorization/application/authorization.service.js';
 import { OrganizationService } from '../../../modules/organizations/application/organization.service.js';
+import { MemberService } from '../../../modules/organizations/application/member.service.js';
 import { WorkspaceService } from '../../../modules/workspaces/application/workspace.service.js';
 import { AuditQueryService } from '../../../modules/audit/application/audit-query.service.js';
 import { AgentService } from '../../../modules/agents/application/agent.service.js';
@@ -40,6 +41,7 @@ export function buildTestServices(): TestServices {
     tenantContextResolver: new TenantContextResolver(memberships, workspaces, workspaceMemberships),
     authorizationService,
     organizationService: new OrganizationService(organizations, memberships, authorizationService, audit),
+    memberService: new MemberService(memberships, principals, authorizationService, audit),
     workspaceService: new WorkspaceService(workspaces, authorizationService, audit),
     agentService: new AgentService(
       new FakeAgentRepository(),

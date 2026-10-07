@@ -11,6 +11,7 @@ import { AuditQueryService } from '../../modules/audit/application/audit-query.s
 import { TenantContextResolver } from '../../modules/authorization/application/tenant-context-resolver.js';
 import { AuthorizationService } from '../../modules/authorization/application/authorization.service.js';
 import { OrganizationService } from '../../modules/organizations/application/organization.service.js';
+import { MemberService } from '../../modules/organizations/application/member.service.js';
 import { WorkspaceService } from '../../modules/workspaces/application/workspace.service.js';
 import { AgentRepository } from '../../modules/agents/infrastructure/agent.repository.js';
 import { AgentDraftRepository } from '../../modules/agents/infrastructure/agent-draft.repository.js';
@@ -23,6 +24,7 @@ export interface AppServices {
   tenantContextResolver: TenantContextResolver;
   authorizationService: AuthorizationService;
   organizationService: OrganizationService;
+  memberService: MemberService;
   workspaceService: WorkspaceService;
   agentService: AgentService;
   auditQueryService: AuditQueryService;
@@ -58,6 +60,7 @@ export function buildAppServices(db: Database): AppServices {
       authorizationService,
       auditLog,
     ),
+    memberService: new MemberService(memberships, principals, authorizationService, auditLog),
     workspaceService: new WorkspaceService(workspaces, authorizationService, auditLog),
     agentService: new AgentService(
       new AgentRepository(db),

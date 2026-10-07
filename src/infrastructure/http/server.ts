@@ -6,6 +6,7 @@ import type { Database } from '../database/client.js';
 import { buildAppServices, type AppServices } from './app-services.js';
 import { errorHandler } from './error-handler.js';
 import { organizationRoutes } from '../../modules/organizations/presentation/http/organizations.routes.js';
+import { memberRoutes } from '../../modules/organizations/presentation/http/members.routes.js';
 import { workspaceRoutes } from '../../modules/workspaces/presentation/http/workspaces.routes.js';
 import { agentRoutes } from '../../modules/agents/presentation/http/agents.routes.js';
 import { auditRoutes } from '../../modules/audit/presentation/http/audit.routes.js';
@@ -76,6 +77,7 @@ export async function buildServer(env: Env, db: Database, services?: AppServices
 
   const resolvedServices = services ?? buildAppServices(db);
   await app.register(organizationRoutes, { services: resolvedServices });
+  await app.register(memberRoutes, { services: resolvedServices });
   await app.register(workspaceRoutes, { services: resolvedServices });
   await app.register(agentRoutes, { services: resolvedServices });
   await app.register(auditRoutes, { services: resolvedServices });
