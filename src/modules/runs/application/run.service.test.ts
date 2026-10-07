@@ -269,6 +269,18 @@ describe('RunService', () => {
       expect(runs.rows).toHaveLength(1);
     });
 
+    it('runs the model once when the same request is sent twice at the same time', async () => {
+      const { agent } = await publishedAgent();
+      const [a, b] = await Promise.all([
+        service.start(builder, agent.id, { input: 'hi', idempotencyKey: 'parallel' }),
+        service.start(builder, agent.id, { input: 'hi', idempotencyKey: 'parallel' }),
+      ]);
+      expect(a.run.id).toBe(b.run.id);
+      expect([a.replayed, b.replayed].sort()).toEqual([false, true]);
+      expect(gateway.calls).toHaveLength(1);
+      expect(runs.rows).toHaveLength(1);
+    });
+
     it('refuses to reuse a key for a different agent', async () => {
       const a = await publishedAgent();
       const b = await publishedAgent();

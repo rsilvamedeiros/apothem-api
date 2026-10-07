@@ -132,16 +132,27 @@ export class RunService {
       throw new ConflictError('Agent is not runnable: its active version is missing');
     }
 
-    const created = await this.runs.create({
-      organizationId: context.organizationId,
-      workspaceId,
-      agentId,
-      agentVersionId: version.id,
-      requestedByPrincipalId: context.principal.id,
-      status: 'queued',
-      idempotencyKey: input.idempotencyKey ?? null,
-      input: { text },
-    });
+    let created: Run;
+    try {
+      created = await this.runs.create({
+        organizationId: context.organizationId,
+        workspaceId,
+        agentId,
+        agentVersionId: version.id,
+        requestedByPrincipalId: context.principal.id,
+        status: 'queued',
+        idempotencyKey: input.idempotencyKey ?? null,
+        input: { text },
+      });
+    } catch (error) {
+      // Two identical requests can pass the lookup above together; the unique
+      // index lets exactly one create the run and the other replays it.
+      const winner = input.idempotencyKey ? await this.runs.findByIdempotencyKey(workspaceId, input.idempotencyKey) : undefined;
+      if (winner && winner.agentId === agentId && winner.requestedByPrincipalId === context.principal.id) {
+        return { run: winner, replayed: true };
+      }
+      throw error;
+    }
     await this.recordAudit(context, 'run.started', created, version);
 
     const finished = await this.execute(context, created, version, text);
