@@ -33,6 +33,7 @@
     "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@stryker-mutator/core": "^10.0.0",
     "@stryker-mutator/vitest-runner": "^10.0.0",
     "@types/node": "^20.14.15",
