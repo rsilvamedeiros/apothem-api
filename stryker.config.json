@@ -6,7 +6,9 @@
   "incrementalFile": ".stryker-cache/incremental.json",
   "mutate": [
     "src/modules/authorization/**/*.ts",
-    "!src/modules/authorization/**/*.test.ts",
+    "src/modules/agents/application/*.ts",
+    "!src/**/*.test.ts",
+    "!src/**/*.port.ts",
     "!src/modules/authorization/**/__fixtures__/**"
   ],
   "reporters": ["clear-text", "progress"],

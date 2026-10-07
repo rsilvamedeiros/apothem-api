@@ -194,4 +194,32 @@ describe('AgentService', () => {
       expect(operations.filter((name) => /^(update|delete|remove|save|upsert)/i.test(name))).toEqual([]);
     });
   });
+
+  describe('error messages', () => {
+    it('explains each refusal so clients can act on it', async () => {
+      const { agent } = await service.create(builder, { name: 'A', slug: 'a' });
+      const missing = '00000000-0000-4000-8000-000000000000';
+
+      await expect(service.list(contextFor('owner', null))).rejects.toThrow('Agents require a resolved workspace scope');
+      await expect(service.create(builder, { name: 'B', slug: 'a' })).rejects.toThrow(
+        'Agent slug "a" is already in use in this workspace',
+      );
+      await expect(service.get(builder, missing)).rejects.toThrow(`Agent ${missing} not found`);
+      await expect(service.publish(admin, agent.id)).rejects.toThrow(
+        'Cannot publish an agent draft with empty instructions',
+      );
+      await expect(service.getVersion(admin, agent.id, missing)).rejects.toThrow(
+        `Version ${missing} not found for agent ${agent.id}`,
+      );
+
+      await service.setLifecycleStatus(admin, agent.id, 'archived');
+      await expect(service.updateDraft(builder, agent.id, { instructions: 'x' })).rejects.toThrow(
+        'Cannot edit the draft of an archived agent',
+      );
+      await expect(service.publish(admin, agent.id)).rejects.toThrow('Cannot publish an archived agent');
+      await expect(service.setLifecycleStatus(admin, agent.id, 'disabled')).rejects.toThrow(
+        'Archived agents are terminal and cannot change status',
+      );
+    });
+  });
 });
