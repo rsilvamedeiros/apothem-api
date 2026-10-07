@@ -3,6 +3,7 @@ import type { AuthorizationService } from '../../authorization/application/autho
 import type { TenantContext } from '../../authorization/application/tenant-context.js';
 import type { AuditPort } from '../../audit/application/audit.port.js';
 import { ConflictError, ForbiddenError, InvalidInputError, NotFoundError } from '../../../common/errors.js';
+import { canonicalJson } from './canonical-json.js';
 import type { AgentPort } from './agent.port.js';
 import type { AgentDraftPatch, AgentDraftPort } from './agent-draft.port.js';
 import type { AgentVersionPort } from './agent-version.port.js';
@@ -27,21 +28,6 @@ function requireWorkspaceScope(context: TenantContext): string {
     throw new ForbiddenError('Agents require a resolved workspace scope');
   }
   return context.workspaceId;
-}
-
-/** JSON with object keys sorted, so semantically equal snapshots hash identically. */
-function canonicalJson(value: unknown): string {
-  if (Array.isArray(value)) {
-    return `[${value.map(canonicalJson).join(',')}]`;
-  }
-  if (value !== null && typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .filter(([, entry]) => entry !== undefined)
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-      .map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`);
-    return `{${entries.join(',')}}`;
-  }
-  return JSON.stringify(value) ?? 'null';
 }
 
 function snapshotChecksum(snapshot: {
