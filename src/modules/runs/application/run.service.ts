@@ -49,6 +49,12 @@ const ERROR_MESSAGES: Record<RunErrorCode, string> = {
   MODEL_REQUEST_REJECTED: 'The model provider rejected the request.',
   RUN_BUDGET_EXCEEDED: 'The run exceeded its time budget.',
   TOOL_NOT_BOUND: 'The model asked for a tool this agent does not have.',
+  TOOL_ARGUMENT_INVALID: 'The model proposed arguments that do not match the tool contract.',
+  TOOL_LIMIT_EXCEEDED: 'The run reached its limit of tool calls.',
+  TOOL_EXECUTION_FAILED: 'A tool could not complete its action.',
+  APPROVAL_REJECTED: 'A person rejected the proposed action.',
+  APPROVAL_EXPIRED: 'The approval request expired before anyone decided.',
+  APPROVAL_INVALIDATED: 'The approval no longer applied because the agent or its configuration changed.',
   RUN_INTERNAL_ERROR: 'The run failed unexpectedly.',
 };
 

@@ -1,14 +1,16 @@
 /**
- * Run lifecycle (apothem-ai/docs/03-domain/executions-audit.md). Approval
- * waiting states arrive with the approvals module; until then a run goes
- * queued -> running -> one terminal state, and a terminal run is never rewritten.
+ * Run lifecycle (apothem-ai/docs/03-domain/executions-audit.md, ADR-013).
+ * A run goes queued -> running -> one terminal state. A tool call that needs
+ * a person parks it in `waiting_approval`; only a decision, an expiry or a
+ * cancellation takes it out. A terminal run is never rewritten.
  */
-export const RUN_STATUSES = ['queued', 'running', 'completed', 'failed', 'cancelled'] as const;
+export const RUN_STATUSES = ['queued', 'running', 'waiting_approval', 'completed', 'failed', 'cancelled'] as const;
 export type RunStatus = (typeof RUN_STATUSES)[number];
 
 const TRANSITIONS: Readonly<Record<RunStatus, readonly RunStatus[]>> = {
   queued: ['running', 'cancelled'],
-  running: ['completed', 'failed', 'cancelled'],
+  running: ['waiting_approval', 'completed', 'failed', 'cancelled'],
+  waiting_approval: ['running', 'failed', 'cancelled'],
   completed: [],
   failed: [],
   cancelled: [],
@@ -34,6 +36,12 @@ export const RUN_ERROR_CODES = [
   'MODEL_REQUEST_REJECTED',
   'RUN_BUDGET_EXCEEDED',
   'TOOL_NOT_BOUND',
+  'TOOL_ARGUMENT_INVALID',
+  'TOOL_LIMIT_EXCEEDED',
+  'TOOL_EXECUTION_FAILED',
+  'APPROVAL_REJECTED',
+  'APPROVAL_EXPIRED',
+  'APPROVAL_INVALIDATED',
   'RUN_INTERNAL_ERROR',
 ] as const;
 export type RunErrorCode = (typeof RUN_ERROR_CODES)[number];
