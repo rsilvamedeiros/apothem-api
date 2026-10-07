@@ -20,6 +20,9 @@ import { AgentRepository } from '../../modules/agents/infrastructure/agent.repos
 import { AgentDraftRepository } from '../../modules/agents/infrastructure/agent-draft.repository.js';
 import { AgentVersionRepository } from '../../modules/agents/infrastructure/agent-version.repository.js';
 import { AgentService } from '../../modules/agents/application/agent.service.js';
+import { RunService } from '../../modules/runs/application/run.service.js';
+import { RunRepository, RunStepRepository } from '../../modules/runs/infrastructure/run.repository.js';
+import { buildModelRouter } from '../ai/model-registry.js';
 import type { AuthenticationPort } from '../../modules/identity/application/authentication.port.js';
 
 export interface AppServices {
@@ -31,6 +34,7 @@ export interface AppServices {
   accountService: AccountService;
   workspaceService: WorkspaceService;
   agentService: AgentService;
+  runService: RunService;
   auditQueryService: AuditQueryService;
 }
 
@@ -45,6 +49,8 @@ export function buildAppServices(db: Database, env: Env): AppServices {
   const workspaces = new WorkspaceRepository(db);
   const auditLog = new AuditLogRepository(db);
   const organizationRepository = new OrganizationRepository(db);
+  const agentRepository = new AgentRepository(db);
+  const agentVersionRepository = new AgentVersionRepository(db);
   const authorizationService = new AuthorizationService();
 
   const authenticator = buildAuthenticator(env, new ActivePrincipalReader(principals), new PrincipalProvisioner(principals));
@@ -68,9 +74,18 @@ export function buildAppServices(db: Database, env: Env): AppServices {
     accountService: new AccountService(organizationRepository, memberships),
     workspaceService: new WorkspaceService(workspaces, authorizationService, auditLog),
     agentService: new AgentService(
-      new AgentRepository(db),
+      agentRepository,
       new AgentDraftRepository(db),
-      new AgentVersionRepository(db),
+      agentVersionRepository,
+      authorizationService,
+      auditLog,
+    ),
+    runService: new RunService(
+      agentRepository,
+      agentVersionRepository,
+      new RunRepository(db),
+      new RunStepRepository(db),
+      buildModelRouter(env),
       authorizationService,
       auditLog,
     ),

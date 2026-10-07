@@ -7,6 +7,9 @@ import { AccountService } from '../../../modules/organizations/application/accou
 import { MemberService } from '../../../modules/organizations/application/member.service.js';
 import { WorkspaceService } from '../../../modules/workspaces/application/workspace.service.js';
 import { AuditQueryService } from '../../../modules/audit/application/audit-query.service.js';
+import { RunService } from '../../../modules/runs/application/run.service.js';
+import { ModelRouter } from '../../../modules/models/application/model-router.js';
+import { MockModelAdapter } from '../../ai/mock-model.adapter.js';
 import { AgentService } from '../../../modules/agents/application/agent.service.js';
 import type { AppServices } from '../app-services.js';
 import {
@@ -14,6 +17,8 @@ import {
   FakeAgentRepository,
   FakeAgentVersionRepository,
   FakeAuditLog,
+  FakeRunRepository,
+  FakeRunStepRepository,
   FakeMembershipRepository,
   FakeOrganizationRepository,
   FakePrincipalRepository,
@@ -36,6 +41,9 @@ export function buildTestServices(): TestServices {
   const organizations = new FakeOrganizationRepository();
   const audit = new FakeAuditLog();
   const authorizationService = new AuthorizationService();
+  const agentRepository = new FakeAgentRepository();
+  const agentVersionRepository = new FakeAgentVersionRepository();
+  const mock = new MockModelAdapter();
 
   const services: AppServices = {
     authenticator: new DevHeaderAuthenticator(new ActivePrincipalReader(principals)),
@@ -45,10 +53,21 @@ export function buildTestServices(): TestServices {
     memberService: new MemberService(memberships, principals, authorizationService, audit),
     accountService: new AccountService(organizations, memberships),
     workspaceService: new WorkspaceService(workspaces, authorizationService, audit),
-    agentService: new AgentService(
-      new FakeAgentRepository(),
-      new FakeAgentDraftRepository(),
-      new FakeAgentVersionRepository(),
+    agentService: new AgentService(agentRepository, new FakeAgentDraftRepository(), agentVersionRepository, authorizationService, audit),
+    runService: new RunService(
+      agentRepository,
+      agentVersionRepository,
+      new FakeRunRepository(),
+      new FakeRunStepRepository(),
+      new ModelRouter(new Map([['mock', mock]]), [
+        {
+          provider: 'mock',
+          model: 'mock-1',
+          qualityTier: mock.qualityTier,
+          capabilities: mock.capabilities,
+          pricing: { inputUsdPerMillionTokens: 0, outputUsdPerMillionTokens: 0 },
+        },
+      ]),
       authorizationService,
       audit,
     ),

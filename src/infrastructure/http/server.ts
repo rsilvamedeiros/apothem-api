@@ -5,11 +5,13 @@ import type { Env } from './env.js';
 import type { Database } from '../database/client.js';
 import { buildAppServices, type AppServices } from './app-services.js';
 import { errorHandler } from './error-handler.js';
+import { requestValidatorCompiler } from './validation.js';
 import { organizationRoutes } from '../../modules/organizations/presentation/http/organizations.routes.js';
 import { accountRoutes } from '../../modules/organizations/presentation/http/account.routes.js';
 import { memberRoutes } from '../../modules/organizations/presentation/http/members.routes.js';
 import { workspaceRoutes } from '../../modules/workspaces/presentation/http/workspaces.routes.js';
 import { agentRoutes } from '../../modules/agents/presentation/http/agents.routes.js';
+import { runRoutes } from '../../modules/runs/presentation/http/runs.routes.js';
 import { auditRoutes } from '../../modules/audit/presentation/http/audit.routes.js';
 
 /**
@@ -44,6 +46,7 @@ export async function buildServer(env: Env, db: Database, services?: AppServices
   });
 
   app.setErrorHandler(errorHandler);
+  app.setValidatorCompiler(requestValidatorCompiler);
 
   await app.register(swagger, {
     openapi: {
@@ -82,6 +85,7 @@ export async function buildServer(env: Env, db: Database, services?: AppServices
   await app.register(memberRoutes, { services: resolvedServices });
   await app.register(workspaceRoutes, { services: resolvedServices });
   await app.register(agentRoutes, { services: resolvedServices });
+  await app.register(runRoutes, { services: resolvedServices });
   await app.register(auditRoutes, { services: resolvedServices });
 
   if (env.AUTH_MODE === 'dev') {
