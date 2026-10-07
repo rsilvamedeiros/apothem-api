@@ -154,4 +154,27 @@ describe('organizations/workspaces HTTP routes', () => {
     });
     expect(crossTenant.statusCode).toBe(403);
   });
+
+  it('rejects a duplicate organization slug with 409 and no partial state', async () => {
+    const first = await principals.create({ type: 'user', email: 'first@example.com', name: 'First' });
+    const second = await principals.create({ type: 'user', email: 'second@example.com', name: 'Second' });
+    await app.inject({
+      method: 'POST',
+      url: '/v1/organizations',
+      headers: { 'x-principal-id': first.id },
+      payload: { name: 'Acme', slug: 'acme' },
+    });
+    const auditedBefore = audit.events.length;
+
+    const duplicate = await app.inject({
+      method: 'POST',
+      url: '/v1/organizations',
+      headers: { 'x-principal-id': second.id },
+      payload: { name: 'Impostor', slug: 'acme' },
+    });
+
+    expect(duplicate.statusCode).toBe(409);
+    expect(duplicate.json().error.code).toBe('CONFLICT');
+    expect(audit.events).toHaveLength(auditedBefore);
+  });
 });
