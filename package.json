@@ -21,6 +21,7 @@
     "db:migrate": "tsx --env-file=.env src/infrastructure/database/migrate.ts",
     "db:seed": "tsx --env-file=.env database/seed.ts",
     "openapi:generate": "tsx --env-file=.env infra/scripts/generate-openapi.ts",
+    "auth:dev-token": "tsx --env-file=.env infra/scripts/mint-dev-token.ts",
     "docs:check-links": "tsx infra/scripts/check-doc-links.ts"
   },
   "dependencies": {
