@@ -1,11 +1,14 @@
-import { SignJWT } from 'jose';
-import { describe, expect, it } from 'vitest';
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { exportJWK, generateKeyPair, SignJWT } from 'jose';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildAuthenticator } from './build-authenticator.js';
 import { loadEnv } from './env.js';
 import { DevHeaderAuthenticator } from '../../modules/identity/infrastructure/dev-header-authenticator.js';
 import { JwtAuthenticator } from '../../modules/identity/infrastructure/jwt-authenticator.js';
 import type { PrincipalReaderPort } from '../../modules/identity/application/principal-reader.port.js';
 import type { AuthenticatedPrincipal } from '../../modules/identity/application/principal.js';
+import type { PrincipalProvisionerPort } from '../../modules/identity/application/principal-provisioner.js';
 
 const base = {
   DATABASE_URL: 'postgres://u:p@localhost:5432/db',
@@ -68,5 +71,90 @@ describe('buildAuthenticator', () => {
 
   it('refuses to build a production authenticator that is not jwt', () => {
     expect(() => loadEnv({ ...base, NODE_ENV: 'production' })).toThrow(/AUTH_MODE/);
+  });
+});
+
+const NEWCOMER = 'new@example.com';
+const signHs256 = (claims: { issuer?: string; audience?: string; email?: string } = {}) =>
+  new SignJWT({ email: claims.email ?? NEWCOMER, email_verified: true, name: 'New Person' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setSubject('s')
+    .setIssuer(claims.issuer ?? jwt.AUTH_JWT_ISSUER)
+    .setAudience(claims.audience ?? jwt.AUTH_JWT_AUDIENCE)
+    .setExpirationTime('5m')
+    .sign(new TextEncoder().encode(jwt.AUTH_SECRET));
+
+describe('buildAuthenticator token binding', () => {
+  it('rejects a token from another issuer or for another audience', async () => {
+    const authenticator = buildAuthenticator(loadEnv(jwt), reader);
+    await expect(authenticator.authenticate(await signHs256({ email: USER.email, issuer: 'https://evil.example.com' }))).resolves.toBeNull();
+    await expect(authenticator.authenticate(await signHs256({ email: USER.email, audience: 'someone-else' }))).resolves.toBeNull();
+    await expect(authenticator.authenticate(await signHs256({ email: USER.email }))).resolves.toEqual(USER);
+  });
+
+  it('refuses to build jwt mode without issuer and audience', () => {
+    const env = loadEnv(jwt);
+    expect(() => buildAuthenticator({ ...env, AUTH_JWT_ISSUER: undefined }, reader)).toThrow(/AUTH_JWT_ISSUER/);
+    expect(() => buildAuthenticator({ ...env, AUTH_JWT_AUDIENCE: undefined }, reader)).toThrow(/AUTH_JWT_AUDIENCE/);
+  });
+});
+
+describe('buildAuthenticator sign-up wiring', () => {
+  const provisioned: AuthenticatedPrincipal = { id: 'p2', type: 'user', email: NEWCOMER, name: 'New Person' };
+  const makeProvisioner = () => {
+    const provision = vi.fn(async () => provisioned);
+    const provisioner: PrincipalProvisionerPort = { provision };
+    return { provision, provisioner };
+  };
+
+  it('creates the account of an unknown verified email only when sign-up is enabled', async () => {
+    const { provision, provisioner } = makeProvisioner();
+    const authenticator = buildAuthenticator(loadEnv({ ...jwt, AUTH_JIT_PROVISIONING: 'true' }), reader, provisioner);
+    await expect(authenticator.authenticate(await signHs256())).resolves.toEqual(provisioned);
+    expect(provision).toHaveBeenCalledWith({ email: NEWCOMER, name: 'New Person' });
+  });
+
+  it('admits existing accounts only when sign-up is disabled, even if a provisioner is given', async () => {
+    const { provision, provisioner } = makeProvisioner();
+    const authenticator = buildAuthenticator(loadEnv(jwt), reader, provisioner);
+    await expect(authenticator.authenticate(await signHs256())).resolves.toBeNull();
+    expect(provision).not.toHaveBeenCalled();
+  });
+
+  it('admits existing accounts only when sign-up is enabled but no provisioner exists', async () => {
+    const authenticator = buildAuthenticator(loadEnv({ ...jwt, AUTH_JIT_PROVISIONING: 'true' }), reader);
+    await expect(authenticator.authenticate(await signHs256())).resolves.toBeNull();
+  });
+});
+
+describe('buildAuthenticator with a published key set', () => {
+  let server: Server | undefined;
+  afterEach(() => new Promise<void>((resolve) => (server ? server.close(() => resolve()) : resolve())));
+
+  async function serveKeys() {
+    const { publicKey, privateKey } = await generateKeyPair('RS256');
+    const jwk = { ...(await exportJWK(publicKey)), kid: 'k1', alg: 'RS256', use: 'sig' };
+    server = createServer((_request, response) => {
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify({ keys: [jwk] }));
+    });
+    await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve));
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/jwks.json`;
+    return { url, privateKey };
+  }
+
+  it('verifies RS256 tokens against the published keys and refuses the shared secret', async () => {
+    const { url, privateKey } = await serveKeys();
+    const authenticator = buildAuthenticator(loadEnv({ ...jwt, AUTH_JWKS_URL: url }), reader);
+    const rs256 = await new SignJWT({ email: USER.email, email_verified: true })
+      .setProtectedHeader({ alg: 'RS256', kid: 'k1' })
+      .setSubject('s')
+      .setIssuer(jwt.AUTH_JWT_ISSUER)
+      .setAudience(jwt.AUTH_JWT_AUDIENCE)
+      .setExpirationTime('5m')
+      .sign(privateKey);
+
+    await expect(authenticator.authenticate(rs256)).resolves.toEqual(USER);
+    await expect(authenticator.authenticate(await signHs256({ email: USER.email }))).resolves.toBeNull();
   });
 });
