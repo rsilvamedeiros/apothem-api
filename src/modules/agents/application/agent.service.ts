@@ -4,6 +4,7 @@ import type { TenantContext } from '../../authorization/application/tenant-conte
 import type { AuditPort } from '../../audit/application/audit.port.js';
 import { ConflictError, ForbiddenError, InvalidInputError, NotFoundError } from '../../../common/errors.js';
 import { canonicalJson } from './canonical-json.js';
+import { parseGuardrails, parseModelPolicy } from '../domain/agent-config.js';
 import type { AgentPort } from './agent.port.js';
 import type { AgentDraftPatch, AgentDraftPort } from './agent-draft.port.js';
 import type { AgentVersionPort } from './agent-version.port.js';
@@ -145,6 +146,16 @@ export class AgentService {
     }
     if (draft.instructions.trim().length === 0) {
       throw new InvalidInputError('Cannot publish an agent draft with empty instructions');
+    }
+
+    // Fail at publish time, not at the first run: an immutable version must be runnable.
+    const modelPolicy = parseModelPolicy(draft.modelPolicy);
+    if (!modelPolicy.ok) {
+      throw new InvalidInputError(`Invalid model policy: ${modelPolicy.issues.join('; ')}`);
+    }
+    const guardrails = parseGuardrails(draft.guardrails);
+    if (!guardrails.ok) {
+      throw new InvalidInputError(`Invalid guardrails: ${guardrails.issues.join('; ')}`);
     }
 
     const snapshot = {

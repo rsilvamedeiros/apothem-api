@@ -118,7 +118,7 @@ describe('AgentService', () => {
     it('gives identical snapshots the same checksum and different ones a different checksum', async () => {
       const { agent, version: first } = await publishedAgent();
       const same = await service.publish(admin, agent.id);
-      await service.updateDraft(builder, agent.id, { guardrails: { maxSteps: 3 } });
+      await service.updateDraft(builder, agent.id, { guardrails: { maxOutputTokens: 300 } });
       const changed = await service.publish(admin, agent.id);
 
       expect(same.checksum).toBe(first.checksum);
@@ -129,15 +129,38 @@ describe('AgentService', () => {
       const { agent } = await service.create(builder, { name: 'A', slug: 'a' });
       await service.updateDraft(builder, agent.id, {
         instructions: 'x',
-        modelPolicy: { primary: 'm1', fallback: ['m2'], limits: { a: 1, b: 2 } },
+        modelPolicy: { qualityTier: 'standard', allowedProviders: ['mock', 'other'], maxCostPerRunUsd: 1 },
       });
       const first = await service.publish(admin, agent.id);
       await service.updateDraft(builder, agent.id, {
-        modelPolicy: { limits: { b: 2, a: 1 }, fallback: ['m2'], primary: 'm1' },
+        modelPolicy: { maxCostPerRunUsd: 1, allowedProviders: ['mock', 'other'], qualityTier: 'standard' },
       });
       const second = await service.publish(admin, agent.id);
 
       expect(second.checksum).toBe(first.checksum);
+    });
+
+    it('rejects a draft whose model policy or guardrails are not valid, naming the field', async () => {
+      const { agent } = await service.create(builder, { name: 'A', slug: 'a' });
+      await service.updateDraft(builder, agent.id, { instructions: 'x', modelPolicy: { qualityTier: 'ultra' } });
+      await expect(service.publish(admin, agent.id)).rejects.toThrow(/Invalid model policy: qualityTier/);
+
+      await service.updateDraft(builder, agent.id, { modelPolicy: {}, guardrails: { maxOutputToken: 10 } });
+      await expect(service.publish(admin, agent.id)).rejects.toThrow(/Invalid guardrails: .*maxOutputToken/);
+
+      await service.updateDraft(builder, agent.id, { guardrails: { timeoutMs: 999_999 } });
+      await expect(service.publish(admin, agent.id)).rejects.toThrow(InvalidInputError);
+      expect(await versions.findLatestVersionNumber(agent.id)).toBe(0);
+    });
+
+    it('publishes a draft with a valid model policy and guardrails', async () => {
+      const { agent } = await service.create(builder, { name: 'A', slug: 'a' });
+      await service.updateDraft(builder, agent.id, {
+        instructions: 'x',
+        modelPolicy: { qualityTier: 'standard', allowedProviders: ['mock'], maxCostPerRunUsd: 1 },
+        guardrails: { maxOutputTokens: 500, timeoutMs: 10_000 },
+      });
+      await expect(service.publish(admin, agent.id)).resolves.toMatchObject({ versionNumber: 1 });
     });
 
     it('records who published which version in the audit trail', async () => {
