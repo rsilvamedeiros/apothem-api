@@ -138,7 +138,7 @@ APIs external to this stack (LLM providers) continue to be called remotely; noth
 ```bash
 npm test                 # unit + integration suites (no Docker needed)
 npm run test:coverage    # same, with enforced coverage floors
-npm run test:mutation    # Stryker on security-critical modules (about 3-4 min)
+npm run test:mutation    # Stryker on security-critical modules (cold run about 40 min; one file: npx stryker run --mutate <file>)
 ```
 
 - **Unit and route tests** use in-memory fakes (`src/infrastructure/http/__fixtures__`).
