@@ -1,6 +1,6 @@
 # runs
 
-**Status:** v1 implemented - synchronous single model call, durable record, no tools or approvals yet
+**Status:** v1 implemented - synchronous reasoning loop with bound tools and human approvals (ADR-013)
 
 Owns Run and RunStep: the immutable, auditable record of an agent execution attempt. Decision context: `apothem-ai/docs/04-ai/agent-runtime.md` and `03-domain/executions-audit.md`.
 
