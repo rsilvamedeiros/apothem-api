@@ -28,10 +28,15 @@ export class MockModelAdapter implements ModelAdapter {
       if (!tool) {
         throw new Error('MOCK_TOOL_TRIGGER present but request.tools is empty');
       }
+      const requested = parseRequestedCall(lastUserMessage.content);
       return {
         provider: this.provider,
         model,
-        output: { type: 'tool_call', toolName: tool.name, arguments: {} },
+        output: {
+          type: 'tool_call',
+          toolName: requested?.toolName ?? tool.name,
+          arguments: requested ? requested.arguments : {},
+        },
         usage: { inputTokens, outputTokens: 1 },
         finishReason: 'tool_call',
       };
@@ -51,4 +56,28 @@ export class MockModelAdapter implements ModelAdapter {
 /** Rough, deterministic token estimate — good enough for mock usage accounting, never for billing. */
 function estimateTokens(text: string): number {
   return Math.max(1, Math.ceil(text.length / 4));
+}
+
+/**
+ * Test hook: "__mock_tool_call__ <tool_name> <json>" makes the mock request
+ * that exact tool and arguments, even a tool that is not bound, so the
+ * runtime's refusal paths can be exercised. Malformed JSON is passed through
+ * as a string for the runtime to reject. Plain text after the trigger keeps
+ * the original behavior: the first bound tool with empty arguments.
+ */
+function parseRequestedCall(content: string): { toolName: string; arguments: unknown } | undefined {
+  const rest = content.slice(content.indexOf(MOCK_TOOL_TRIGGER) + MOCK_TOOL_TRIGGER.length).trim();
+  const match = /^([a-z][a-z0-9_]*)(?:\s+(.*))?$/s.exec(rest);
+  if (!match || match[2] === undefined) {
+    return undefined;
+  }
+  const [, toolName, rawArguments] = match;
+  if (!toolName || !rawArguments?.trimStart().startsWith('{')) {
+    return undefined;
+  }
+  try {
+    return { toolName, arguments: JSON.parse(rawArguments) as unknown };
+  } catch {
+    return { toolName, arguments: rawArguments };
+  }
 }
