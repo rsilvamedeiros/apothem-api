@@ -29,6 +29,21 @@ function requireWorkspaceScope(context: TenantContext): string {
   return context.workspaceId;
 }
 
+/** JSON with object keys sorted, so semantically equal snapshots hash identically. */
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalJson).join(',')}]`;
+  }
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, entry]) => entry !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`);
+    return `{${entries.join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
 function snapshotChecksum(snapshot: {
   instructions: string;
   modelPolicy: unknown;
@@ -37,7 +52,7 @@ function snapshotChecksum(snapshot: {
   memoryPolicy: unknown;
   guardrails: unknown;
 }): string {
-  return createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
+  return createHash('sha256').update(canonicalJson(snapshot)).digest('hex');
 }
 
 export class AgentService {
@@ -199,6 +214,10 @@ export class AgentService {
     const agent = await this.agents.findById(workspaceId, agentId);
     if (!agent) {
       throw new NotFoundError(`Agent ${agentId} not found`);
+    }
+
+    if (agent.status === 'archived') {
+      throw new ConflictError('Archived agents are terminal and cannot change status');
     }
 
     const updated = await this.agents.updateLifecycle(agentId, { status });
