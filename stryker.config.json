@@ -7,6 +7,7 @@
   "mutate": [
     "src/modules/authorization/**/*.ts",
     "src/modules/agents/application/*.ts",
+    "src/modules/models/application/*.ts",
     "!src/**/*.test.ts",
     "!src/**/*.port.ts",
     "!src/modules/authorization/**/__fixtures__/**"
