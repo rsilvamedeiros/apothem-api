@@ -41,7 +41,8 @@ ADRs for this repository live in `apothem-ai/docs/adr/` — there is no separate
 6. Prefer idempotent application commands.
 7. Prefer auditability over hidden convenience.
 8. Prefer a modular monolith over premature service extraction.
-9. Prefer the zero-cost stack baseline (ADR-009) over introducing a paid vendor without discussion.
+9. Prefer the zero-cost stack baseline (ADR-009, hosting per ADR-010) over introducing a paid vendor without discussion.
+10. Prefer test-first changes and the shared quality practices in `apothem-ai/docs/16-testing/quality-practices.md` (ADR-011).
 
 ## Context preservation
 
@@ -58,4 +59,6 @@ When making a significant change, update the closest relevant `.md` (in this rep
 - silently retrying non-idempotent tools;
 - removing approval steps to simplify demos;
 - using logs as a substitute for an immutable audit trail;
-- hand-writing frontend-facing types that duplicate what the OpenAPI spec already generates.
+- hand-writing frontend-facing types that duplicate what the OpenAPI spec already generates;
+- lowering test or coverage thresholds to make a build pass;
+- using live AI providers in unit, integration or CI tests (use the mock Model Gateway adapter).
