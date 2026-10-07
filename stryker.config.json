@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "vitest",
+  "coverageAnalysis": "perTest",
+  "incremental": true,
+  "incrementalFile": ".stryker-cache/incremental.json",
+  "mutate": [
+    "src/modules/authorization/**/*.ts",
+    "!src/modules/authorization/**/*.test.ts",
+    "!src/modules/authorization/**/__fixtures__/**"
+  ],
+  "reporters": ["clear-text", "progress"],
+  "thresholds": { "high": 90, "low": 80, "break": 75 },
+  "tempDirName": ".stryker-tmp"
+}
