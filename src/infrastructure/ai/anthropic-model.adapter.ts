@@ -1,8 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type {
-  GenerateRequest,
-  GenerateResult,
-  ModelAdapter,
+import {
+  DEFAULT_MAX_OUTPUT_TOKENS,
+  type GenerateRequest,
+  type GenerateResult,
+  type ModelAdapter,
 } from '../../modules/models/application/model-gateway.port.js';
 import type { ModelCapability, QualityTier } from '../../modules/models/domain/model-policy.js';
 import { ModelProviderError, type ModelErrorClass } from '../../modules/models/domain/model-error.js';
@@ -13,8 +14,6 @@ const CAPABILITIES: ReadonlySet<ModelCapability> = new Set([
   'vision',
   'long_context',
 ]);
-
-const DEFAULT_MAX_OUTPUT_TOKENS = 1024;
 
 /**
  * The only file allowed to import `@anthropic-ai/sdk` — see

@@ -6,4 +6,11 @@ export interface ModelRoute {
   readonly model: string;
   readonly qualityTier: QualityTier;
   readonly capabilities: ReadonlySet<ModelCapability>;
+  /** Needed to honor `maxCostPerRunUsd`; a route without pricing is never chosen under a budget. */
+  readonly pricing?: ModelPricing;
+}
+
+export interface ModelPricing {
+  readonly inputUsdPerMillionTokens: number;
+  readonly outputUsdPerMillionTokens: number;
 }

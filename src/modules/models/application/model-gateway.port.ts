@@ -1,5 +1,8 @@
 import type { ModelCapability, ModelPolicy, QualityTier } from '../domain/model-policy.js';
 
+/** Output cap assumed when a request sets none; adapters and the cost guardrail share it. */
+export const DEFAULT_MAX_OUTPUT_TOKENS = 1024;
+
 export type ModelMessageRole = 'system' | 'user' | 'assistant';
 
 export interface ModelMessage {
