@@ -133,6 +133,18 @@ Other useful scripts: `npm run build`, `npm run typecheck`, `npm run lint`, `npm
 
 APIs external to this stack (LLM providers) continue to be called remotely; nothing about model access is mocked at the infrastructure level, only at the adapter level for tests/CI.
 
+## Testing
+
+```bash
+npm test                 # unit + integration suites (no Docker needed)
+npm run test:coverage    # same, with enforced coverage floors
+npm run test:mutation    # Stryker on security-critical modules (about 3-4 min)
+```
+
+- **Unit and route tests** use in-memory fakes (`src/infrastructure/http/__fixtures__`).
+- **Integration tests** (`*.integration.test.ts`) run the real Drizzle repositories and the full HTTP stack on PGlite (real Postgres compiled to WASM) with the committed `migrations/` applied. They need no Docker, network or cost, so they run identically locally and in CI. The CI `migration` job still validates the migrations on a real `pgvector/pgvector:pg16` service.
+- **Evals** for the Model Gateway live in `src/modules/models/evals`; only the mock adapter runs in tests.
+- Coverage floors only go up; security-critical modules have higher floors (see `vitest.config.ts`).
 ## Status
 
 **Batches 1–5 complete** (repository skeleton, persistence, identity/authorization, delivery surfaces, CI/operations). Agent draft/version lifecycle and the Model Gateway (Milestone B of the MVP build order) are in progress; durable runs/worker are not started yet.
