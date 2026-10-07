@@ -39,6 +39,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
+    "fast-check": "^4.10.2",
     "globby": "^16.2.4",
     "prettier": "^3.3.3",
     "tsx": "^4.16.5",
