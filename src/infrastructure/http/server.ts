@@ -13,10 +13,10 @@ import { auditRoutes } from '../../modules/audit/presentation/http/audit.routes.
 
 /**
  * Transport wiring only. Route handlers must delegate to module
- * application services â€” no business logic here.
+ * application services — no business logic here.
  *
  * `services` is injectable so tests can exercise real route/middleware
- * wiring against fake application services without a database â€” see
+ * wiring against fake application services without a database — see
  * organizations.routes.test.ts. Production boot (main/index.ts) always lets
  * it default to the Drizzle-backed services built from `db`.
  */
@@ -25,7 +25,7 @@ export async function buildServer(env: Env, db: Database, services?: AppServices
     logger: {
       enabled: env.NODE_ENV !== 'test',
       // Correlation id (request.id) is included by Fastify's default request
-      // log serializer; redact anything that could carry a credential â€” see
+      // log serializer; redact anything that could carry a credential — see
       // observability-logging-tracing.md ("minimizing sensitive content").
       redact: {
         paths: ['req.headers.authorization', 'req.headers["x-principal-id"]'],

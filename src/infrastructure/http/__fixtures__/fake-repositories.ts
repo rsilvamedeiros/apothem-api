@@ -26,7 +26,7 @@ import type { AgentVersionPort } from '../../../modules/agents/application/agent
 /**
  * In-memory stand-ins for the Drizzle repositories, structurally compatible
  * with the concrete repository classes (same public method shapes) so they
- * can be passed straight into the real application services under test ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
+ * can be passed straight into the real application services under test -
  * see organizations-workspaces.routes.test.ts. Not a mocking framework: just
  * enough persistence to exercise real business/authorization logic in tests
  * without a database.
