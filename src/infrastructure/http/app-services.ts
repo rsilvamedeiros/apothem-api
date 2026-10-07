@@ -1,4 +1,4 @@
-﻿import type { Database } from '../database/client.js';
+import type { Database } from '../database/client.js';
 import { PrincipalRepository } from '../../modules/identity/infrastructure/principal.repository.js';
 import { ActivePrincipalReader } from '../../modules/identity/infrastructure/active-principal-reader.js';
 import { DevHeaderAuthenticator } from '../../modules/identity/infrastructure/dev-header-authenticator.js';

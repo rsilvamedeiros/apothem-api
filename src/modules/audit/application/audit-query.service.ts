@@ -1,4 +1,4 @@
-﻿import type { AuthorizationService } from '../../authorization/application/authorization.service.js';
+import type { AuthorizationService } from '../../authorization/application/authorization.service.js';
 import type { TenantContext } from '../../authorization/application/tenant-context.js';
 import { decodeAuditCursor, encodeAuditCursor } from './audit-cursor.js';
 import type { AuditReaderPort, StoredAuditEvent } from './audit-reader.port.js';

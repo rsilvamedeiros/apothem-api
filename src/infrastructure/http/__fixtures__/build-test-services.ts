@@ -1,4 +1,4 @@
-﻿import { DevHeaderAuthenticator } from '../../../modules/identity/infrastructure/dev-header-authenticator.js';
+import { DevHeaderAuthenticator } from '../../../modules/identity/infrastructure/dev-header-authenticator.js';
 import { ActivePrincipalReader } from '../../../modules/identity/infrastructure/active-principal-reader.js';
 import { TenantContextResolver } from '../../../modules/authorization/application/tenant-context-resolver.js';
 import { AuthorizationService } from '../../../modules/authorization/application/authorization.service.js';

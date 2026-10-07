@@ -1,4 +1,4 @@
-﻿import type { AuditEvent, AuditPort } from '../../../modules/audit/application/audit.port.js';
+import type { AuditEvent, AuditPort } from '../../../modules/audit/application/audit.port.js';
 import type {
   AuditEventFilter,
   AuditPageRequest,

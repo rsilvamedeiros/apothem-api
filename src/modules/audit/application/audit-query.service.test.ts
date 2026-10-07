@@ -1,4 +1,4 @@
-﻿import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { AuditQueryService, DEFAULT_AUDIT_PAGE_SIZE, MAX_AUDIT_PAGE_SIZE } from './audit-query.service.js';
 import { AuthorizationService } from '../../authorization/application/authorization.service.js';
 import type { TenantContext } from '../../authorization/application/tenant-context.js';

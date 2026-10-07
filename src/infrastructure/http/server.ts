@@ -1,4 +1,4 @@
-﻿import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance } from 'fastify';
 import swagger from '@fastify/swagger';
 import { sql } from 'drizzle-orm';
 import type { Env } from './env.js';
