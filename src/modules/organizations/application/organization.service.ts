@@ -2,7 +2,7 @@ import type { AuthorizationService } from '../../authorization/application/autho
 import type { TenantContext } from '../../authorization/application/tenant-context.js';
 import type { AuthenticatedPrincipal } from '../../identity/application/principal.js';
 import type { AuditPort } from '../../audit/application/audit.port.js';
-import { NotFoundError } from '../../../common/errors.js';
+import { ConflictError, NotFoundError } from '../../../common/errors.js';
 import type { OrganizationPort } from './organization.port.js';
 import type { MembershipPort } from './membership.port.js';
 import type { Organization } from '../infrastructure/schema.js';
@@ -27,6 +27,13 @@ export class OrganizationService {
   ) {}
 
   async create(principal: AuthenticatedPrincipal, input: CreateOrganizationInput): Promise<Organization> {
+    // Slugs are globally unique. Checking first returns a clean 409 instead of
+    // surfacing the database unique-violation as a 500; a concurrent create
+    // that slips past this check is still stopped by the unique constraint.
+    if (await this.organizations.findBySlug(input.slug)) {
+      throw new ConflictError(`Organization slug "${input.slug}" is already in use`);
+    }
+
     const organization = await this.organizations.create({ name: input.name, slug: input.slug });
     const membership = await this.memberships.create({
       organizationId: organization.id,
