@@ -25,9 +25,13 @@ npm run auth:dev-token -- someone@example.com   # prints a 1 hour HS256 token fo
 curl -H "Authorization: Bearer <token>" http://localhost:3001/v1/organizations/<id>
 ```
 
+## Sign-up (just-in-time provisioning)
+
+With `AUTH_JIT_PROVISIONING=true` a provider-verified email without an account gets one on first login (`PrincipalProvisioner`): race-safe through the unique email constraint, never resurrecting or returning a suspended account, name taken from the `name` claim or the email. An account alone grants nothing; organizations still require a membership. `GET /v1/me` returns the caller and their active organizations so a new user can pick or create one.
+
 ## Known gaps
 
-- No token issuer yet (Auth.js or another OIDC server must sign tokens), no refresh, no token deny list (use short lifetimes), no just-in-time provisioning.
+- Tokens are issued by apps/web (Auth.js, ADR-012); no refresh endpoint and no token deny list (use short lifetimes).
 
 Reference docs (`apothem-ai/docs/`):
 - `03-domain/users-memberships.md`
