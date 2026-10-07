@@ -54,7 +54,7 @@ describe('agents HTTP routes', () => {
       method: 'PATCH',
       url: `${agentsUrl(org.id, workspace.id)}/${agent.id}/draft`,
       headers: { 'x-principal-id': owner.id },
-      payload: { instructions: 'You are a helpful support agent.', modelPolicy: { provider: 'mock', model: 'mock-1' } },
+      payload: { instructions: 'You are a helpful support agent.', modelPolicy: { allowedProviders: ['mock'] } },
     });
     expect(patched.statusCode).toBe(200);
     expect(patched.json().instructions).toBe('You are a helpful support agent.');

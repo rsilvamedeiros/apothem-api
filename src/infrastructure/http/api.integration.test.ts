@@ -61,7 +61,7 @@ describe('API on real Postgres (integration)', () => {
 
     const patched = await call(t.principal.id, 'PATCH', `${t.base}/${agentId}/draft`, {
       instructions: 'Answer politely.',
-      guardrails: { maxSteps: 3 },
+      guardrails: { maxOutputTokens: 300 },
     });
     expect(patched.status).toBe(200);
 

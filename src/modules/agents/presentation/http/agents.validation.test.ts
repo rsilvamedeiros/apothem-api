@@ -128,7 +128,7 @@ describe('agents HTTP validation and error model', () => {
       method: 'PATCH',
       url: `${agentsUrl(org.id, workspace.id)}/${agent.id}/draft`,
       headers,
-      payload: { instructions: 'Be helpful.', guardrails: { maxSteps: 5 } },
+      payload: { instructions: 'Be helpful.', guardrails: { maxOutputTokens: 500 } },
     });
     const published = await app.inject({
       method: 'POST',

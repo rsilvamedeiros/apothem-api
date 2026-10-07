@@ -140,9 +140,9 @@ describe('Drizzle repositories on real Postgres (integration)', () => {
         slug: 'bot',
       });
       await drafts.create({ agentId: agent.id });
-      await drafts.update(agent.id, { instructions: 'v1 text', guardrails: { maxSteps: 3 } });
+      await drafts.update(agent.id, { instructions: 'v1 text', guardrails: { maxOutputTokens: 300 } });
       const draft = await drafts.findByAgentId(agent.id);
-      expect(draft).toMatchObject({ instructions: 'v1 text', guardrails: { maxSteps: 3 } });
+      expect(draft).toMatchObject({ instructions: 'v1 text', guardrails: { maxOutputTokens: 300 } });
 
       for (const versionNumber of [1, 2, 3]) {
         await versions.create({
