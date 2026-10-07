@@ -55,4 +55,11 @@ describe('auth configuration', () => {
     expect(() => loadEnv({ ...base, AUTH_MODE: 'none' })).toThrow(/AUTH_MODE/);
     expect(() => loadEnv({ ...jwtEnv, AUTH_JWKS_URL: 'not a url' })).toThrow(/AUTH_JWKS_URL/);
   });
+
+  it('keeps just-in-time provisioning off unless explicitly enabled', () => {
+    expect(loadEnv(jwtEnv).AUTH_JIT_PROVISIONING).toBe(false);
+    expect(loadEnv({ ...jwtEnv, AUTH_JIT_PROVISIONING: 'true' }).AUTH_JIT_PROVISIONING).toBe(true);
+    expect(loadEnv({ ...jwtEnv, AUTH_JIT_PROVISIONING: 'false' }).AUTH_JIT_PROVISIONING).toBe(false);
+    expect(() => loadEnv({ ...jwtEnv, AUTH_JIT_PROVISIONING: 'yes' })).toThrow(/AUTH_JIT_PROVISIONING/);
+  });
 });

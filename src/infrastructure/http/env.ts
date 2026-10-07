@@ -25,6 +25,11 @@ const baseSchema = z.object({
   AUTH_JWT_AUDIENCE: z.string().min(1).optional(),
   /** Asymmetric keys (RS256/ES256) from a self-hosted or external OIDC provider. Without it, HS256 with AUTH_SECRET is used. */
   AUTH_JWKS_URL: z.string().url().optional(),
+  /** Create an account on the first login of a provider-verified email (sign-up). Off by default. */
+  AUTH_JIT_PROVISIONING: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   GOOGLE_API_KEY: z.string().optional(),

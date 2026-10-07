@@ -1,5 +1,6 @@
 import type { Database } from '../database/client.js';
 import { PrincipalRepository } from '../../modules/identity/infrastructure/principal.repository.js';
+import { PrincipalProvisioner } from '../../modules/identity/application/principal-provisioner.js';
 import { ActivePrincipalReader } from '../../modules/identity/infrastructure/active-principal-reader.js';
 import type { Env } from './env.js';
 import { buildAuthenticator } from './build-authenticator.js';
@@ -43,7 +44,7 @@ export function buildAppServices(db: Database, env: Env): AppServices {
   const auditLog = new AuditLogRepository(db);
   const authorizationService = new AuthorizationService();
 
-  const authenticator = buildAuthenticator(env, new ActivePrincipalReader(principals));
+  const authenticator = buildAuthenticator(env, new ActivePrincipalReader(principals), new PrincipalProvisioner(principals));
   const tenantContextResolver = new TenantContextResolver(
     memberships,
     workspaces,
