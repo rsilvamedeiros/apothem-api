@@ -76,7 +76,7 @@ Do not test AI features only by "trying the chat". AI behavior requires determin
 
 - Claude Code may commit automatically; the user does not approve each commit. Commit in small, logical units, one concern per commit.
 - Commit messages: Conventional Commits (`feat`, `fix`, `docs`, `test`, `refactor`, `chore`, `ci`, `build`, `perf`), English, imperative, a single concise subject line, optional scope. No body, no footers, no `Co-Authored-By`, no author tags.
-- Never `git push`, force-push, rewrite history or skip hooks unless explicitly asked.
+- Always `git push` to the current branch's remote right after each commit. Never force-push, rewrite history or skip hooks unless explicitly asked.
 - Work module by module: after each module, send the user a short preview (what changed, tests run, commits made) and wait for `next`, `ok` or `proceed` before starting the next module.
 
 ## Engineering practices
