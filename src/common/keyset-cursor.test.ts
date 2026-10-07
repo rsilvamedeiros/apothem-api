@@ -1,19 +1,19 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { decodeAuditCursor, encodeAuditCursor } from './audit-cursor.js';
-import { InvalidInputError } from '../../../common/errors.js';
+import { decodeKeysetCursor, encodeKeysetCursor } from './keyset-cursor.js';
+import { InvalidInputError } from './errors.js';
 
 const POSITION = { createdAt: new Date('2026-03-04T05:06:07.890Z'), id: '3f1c1c3e-4a52-4d5e-8c53-0d3f5b1a2e10' };
 
-describe('audit cursor', () => {
+describe('keyset cursor', () => {
   it('round-trips a position', () => {
-    expect(decodeAuditCursor(encodeAuditCursor(POSITION))).toEqual(POSITION);
+    expect(decodeKeysetCursor(encodeKeysetCursor(POSITION))).toEqual(POSITION);
   });
 
   it('round-trips any date and uuid (property)', () => {
     fc.assert(
       fc.property(fc.date({ noInvalidDate: true }), fc.uuid(), (createdAt, id) => {
-        const decoded = decodeAuditCursor(encodeAuditCursor({ createdAt, id }));
+        const decoded = decodeKeysetCursor(encodeKeysetCursor({ createdAt, id }));
         expect(decoded.createdAt.getTime()).toBe(createdAt.getTime());
         expect(decoded.id).toBe(id);
       }),
@@ -21,7 +21,7 @@ describe('audit cursor', () => {
   });
 
   it('is opaque and URL-safe', () => {
-    const cursor = encodeAuditCursor(POSITION);
+    const cursor = encodeKeysetCursor(POSITION);
     expect(cursor).toMatch(/^[A-Za-z0-9_-]+$/);
     expect(cursor).not.toContain(POSITION.id);
   });
@@ -44,7 +44,7 @@ describe('audit cursor', () => {
     ['id with trailing text', Buffer.from(JSON.stringify({ c: POSITION.createdAt.toISOString(), i: POSITION.id + 'x' })).toString('base64url')],
     ['id with leading text', Buffer.from(JSON.stringify({ c: POSITION.createdAt.toISOString(), i: 'x' + POSITION.id })).toString('base64url')],
   ])('rejects a malformed cursor (%s) as invalid input', (_label, cursor) => {
-    expect(() => decodeAuditCursor(cursor)).toThrow(InvalidInputError);
-    expect(() => decodeAuditCursor(cursor)).toThrow('Invalid cursor');
+    expect(() => decodeKeysetCursor(cursor)).toThrow(InvalidInputError);
+    expect(() => decodeKeysetCursor(cursor)).toThrow('Invalid cursor');
   });
 });

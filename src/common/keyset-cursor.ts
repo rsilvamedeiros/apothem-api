@@ -1,14 +1,14 @@
-import { InvalidInputError } from '../../../common/errors.js';
+import { InvalidInputError } from './errors.js';
 
-/** Keyset position of the last event on a page: events are ordered by (createdAt, id) descending. */
-export interface AuditCursorPosition {
+/** Keyset position of the last row on a page: rows are ordered by (createdAt, id) descending. */
+export interface KeysetPosition {
   readonly createdAt: Date;
   readonly id: string;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export function encodeAuditCursor(position: AuditCursorPosition): string {
+export function encodeKeysetCursor(position: KeysetPosition): string {
   return Buffer.from(JSON.stringify({ c: position.createdAt.toISOString(), i: position.id })).toString('base64url');
 }
 
@@ -16,7 +16,7 @@ export function encodeAuditCursor(position: AuditCursorPosition): string {
  * Cursors are opaque to clients but still untrusted input: anything that is
  * not a well-formed position is rejected before it can reach a query.
  */
-export function decodeAuditCursor(cursor: string): AuditCursorPosition {
+export function decodeKeysetCursor(cursor: string): KeysetPosition {
   const invalid = new InvalidInputError('Invalid cursor');
   let parsed: unknown;
   try {

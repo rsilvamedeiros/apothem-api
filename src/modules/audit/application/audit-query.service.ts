@@ -1,6 +1,6 @@
 import type { AuthorizationService } from '../../authorization/application/authorization.service.js';
 import type { TenantContext } from '../../authorization/application/tenant-context.js';
-import { decodeAuditCursor, encodeAuditCursor } from './audit-cursor.js';
+import { decodeKeysetCursor, encodeKeysetCursor } from '../../../common/keyset-cursor.js';
 import type { AuditReaderPort, StoredAuditEvent } from './audit-reader.port.js';
 
 export const DEFAULT_AUDIT_PAGE_SIZE = 50;
@@ -42,7 +42,7 @@ export class AuditQueryService {
     this.authorization.assert(context, 'audit.read');
 
     const limit = clampLimit(query.limit);
-    const after = query.cursor === undefined ? undefined : decodeAuditCursor(query.cursor);
+    const after = query.cursor === undefined ? undefined : decodeKeysetCursor(query.cursor);
 
     // One extra row tells us whether another page exists without a count query.
     const rows = await this.reader.list(
@@ -57,7 +57,7 @@ export class AuditQueryService {
 
     const events = rows.slice(0, limit);
     const last = events[events.length - 1];
-    const nextCursor = rows.length > limit && last ? encodeAuditCursor({ createdAt: last.createdAt, id: last.id }) : null;
+    const nextCursor = rows.length > limit && last ? encodeKeysetCursor({ createdAt: last.createdAt, id: last.id }) : null;
     return { events, nextCursor };
   }
 }
