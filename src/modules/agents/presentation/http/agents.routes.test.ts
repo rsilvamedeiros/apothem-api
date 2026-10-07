@@ -1,52 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { buildServer } from '../../../../infrastructure/http/server.js';
-import { loadEnv } from '../../../../infrastructure/http/env.js';
-import type { Database } from '../../../../infrastructure/database/client.js';
-import { buildTestServices } from '../../../../infrastructure/http/__fixtures__/build-test-services.js';
+import { buildHttpTestApp, setupOwnerWithWorkspace } from '../../../../infrastructure/http/__fixtures__/http-test-harness.js';
 import type { FakePrincipalRepository } from '../../../../infrastructure/http/__fixtures__/fake-repositories.js';
-
-const env = loadEnv({
-  NODE_ENV: 'test',
-  DATABASE_URL: 'postgres://unused/unused',
-  REDIS_URL: 'redis://unused',
-  STORAGE_ENDPOINT: 'http://unused',
-  STORAGE_ACCESS_KEY_ID: 'unused',
-  STORAGE_SECRET_ACCESS_KEY: 'unused',
-  STORAGE_BUCKET: 'unused',
-  AUTH_SECRET: 'unused-secret-value',
-});
-
-async function setupOwnerWithWorkspace(app: FastifyInstance, principals: FakePrincipalRepository) {
-  const owner = await principals.create({ type: 'user', email: `owner-${crypto.randomUUID()}@example.com`, name: 'Owner' });
-  const org = (
-    await app.inject({
-      method: 'POST',
-      url: '/v1/organizations',
-      headers: { 'x-principal-id': owner.id },
-      payload: { name: 'Acme', slug: `acme-${crypto.randomUUID()}` },
-    })
-  ).json();
-  const workspace = (
-    await app.inject({
-      method: 'POST',
-      url: `/v1/organizations/${org.id}/workspaces`,
-      headers: { 'x-principal-id': owner.id },
-      payload: { name: 'Default', slug: 'default' },
-    })
-  ).json();
-  return { owner, org, workspace };
-}
 
 describe('agents HTTP routes', () => {
   let app: FastifyInstance;
   let principals: FakePrincipalRepository;
 
   beforeEach(async () => {
-    const built = buildTestServices();
-    principals = built.principals;
-    app = await buildServer(env, {} as Database, built.services);
-    await app.ready();
+    ({ app, principals } = await buildHttpTestApp());
   });
 
   afterEach(async () => {
