@@ -12,6 +12,7 @@ import { memberRoutes } from '../../modules/organizations/presentation/http/memb
 import { workspaceRoutes } from '../../modules/workspaces/presentation/http/workspaces.routes.js';
 import { agentRoutes } from '../../modules/agents/presentation/http/agents.routes.js';
 import { approvalRoutes } from '../../modules/approvals/presentation/http/approvals.routes.js';
+import { toolRoutes } from '../../modules/tools/presentation/http/tools.routes.js';
 import { runRoutes } from '../../modules/runs/presentation/http/runs.routes.js';
 import { auditRoutes } from '../../modules/audit/presentation/http/audit.routes.js';
 
@@ -86,6 +87,7 @@ export async function buildServer(env: Env, db: Database, services?: AppServices
   await app.register(memberRoutes, { services: resolvedServices });
   await app.register(workspaceRoutes, { services: resolvedServices });
   await app.register(agentRoutes, { services: resolvedServices });
+  await app.register(toolRoutes, { services: resolvedServices });
   await app.register(runRoutes, { services: resolvedServices });
   await app.register(approvalRoutes, { services: resolvedServices });
   await app.register(auditRoutes, { services: resolvedServices });
