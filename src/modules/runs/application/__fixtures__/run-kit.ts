@@ -17,6 +17,7 @@ import {
   FakeRunStepRepository,
 } from '../../../../infrastructure/http/__fixtures__/fake-repositories.js';
 import { RunService } from '../run.service.js';
+import { ApprovalService } from '../../../approvals/application/approval.service.js';
 
 export const ORG = '11111111-1111-4111-8111-111111111111';
 export const WORKSPACE = '22222222-2222-4222-8222-222222222222';
@@ -99,6 +100,13 @@ export function buildRunKit(options: RunKitOptions = {}) {
     ...(options.approvalTtlMs ? { approvalTtlMs: options.approvalTtlMs } : {}),
   });
 
+  const approvalService = new ApprovalService(approvals, runService, agents, memberships, authorization, audit, now);
+
+  /** Seeds an active organization membership so separation-of-duties rules can see who else could approve. */
+  async function addMember(role: OrganizationRole, principalSuffix: string, status: 'active' | 'invited' | 'revoked' = 'active') {
+    return memberships.create({ organizationId: ORG, principalId: `principal-${principalSuffix}`, role, status });
+  }
+
   async function publishedAgent(
     config: { instructions?: string; modelPolicy?: object; guardrails?: object; toolBindings?: object[]; workspaceId?: string } = {},
   ) {
@@ -116,6 +124,6 @@ export function buildRunKit(options: RunKitOptions = {}) {
 
   return {
     agents, drafts, versions, runs, steps, approvals, notes, memberships, audit, gateway, authorization,
-    agentService, runService, executor, clock, now, publishedAgent,
+    agentService, runService, approvalService, executor, clock, now, publishedAgent, addMember,
   };
 }

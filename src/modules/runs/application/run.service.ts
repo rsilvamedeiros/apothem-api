@@ -290,6 +290,11 @@ export class RunService {
     return this.drive(running, version, (running.input as { text: string }).text, setup, actorPrincipalId);
   }
 
+  /** Internal lookup for collaborating services (approvals); callers enforce authorization themselves. */
+  async findRun(workspaceId: string, runId: string): Promise<Run | undefined> {
+    return this.runs.findById(workspaceId, runId);
+  }
+
   /** Ends a waiting run whose approval was rejected, expired or invalidated. */
   async failWaitingRun(approval: Approval, code: 'APPROVAL_REJECTED' | 'APPROVAL_EXPIRED' | 'APPROVAL_INVALIDATED', actorPrincipalId: string): Promise<Run> {
     const run = await this.runs.findById(approval.workspaceId, approval.runId);
