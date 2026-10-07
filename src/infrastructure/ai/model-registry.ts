@@ -20,6 +20,8 @@ export function buildModelRouter(env: Env): ModelRouter {
     const anthropic = new AnthropicModelAdapter(env.ANTHROPIC_API_KEY);
     adapters.set(anthropic.provider, anthropic);
     // Preference order within the provider: higher-quality route first.
+    // Anthropic routes carry no `pricing` on purpose: prices are not hard-coded
+    // here, so policies with maxCostPerRunUsd fail closed instead of guessing.
     routes.push(
       {
         provider: anthropic.provider,
@@ -47,6 +49,8 @@ export function buildModelRouter(env: Env): ModelRouter {
     model: 'mock-1',
     qualityTier: mock.qualityTier,
     capabilities: mock.capabilities,
+    // No network, no cost: always satisfies a budget.
+    pricing: { inputUsdPerMillionTokens: 0, outputUsdPerMillionTokens: 0 },
   });
 
   return new ModelRouter(adapters, routes);

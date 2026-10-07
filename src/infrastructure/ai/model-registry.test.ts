@@ -38,4 +38,17 @@ describe('buildModelRouter', () => {
     const router = buildModelRouter(loadEnv({ ...baseEnv, ANTHROPIC_API_KEY: 'sk-test-unused' }));
     expect(router.selectRoute({}).provider).toBe('anthropic');
   });
+
+  it('prices the mock route at zero so budgeted policies still resolve in tests and CI', () => {
+    const router = buildModelRouter(loadEnv(baseEnv));
+    expect(router.selectRoute({ maxCostPerRunUsd: 0 }).provider).toBe('mock');
+  });
+
+  it('fails closed under a budget for a provider whose pricing is not configured', () => {
+    const router = buildModelRouter(loadEnv({ ...baseEnv, ANTHROPIC_API_KEY: 'sk-test-unused' }));
+    expect(router.selectRoute({ maxCostPerRunUsd: 1 }).provider).toBe('mock');
+    expect(() => router.selectRoute({ allowedProviders: ['anthropic'], maxCostPerRunUsd: 1 })).toThrow(
+      ModelPolicyNoRouteError,
+    );
+  });
 });
