@@ -14,6 +14,10 @@ class FakePrincipalReader implements PrincipalReaderPort {
   async findById(principalId: string): Promise<AuthenticatedPrincipal | undefined> {
     return principalId === KNOWN_PRINCIPAL.id ? KNOWN_PRINCIPAL : undefined;
   }
+
+  async findByEmail(): Promise<AuthenticatedPrincipal | undefined> {
+    return undefined;
+  }
 }
 
 describe('DevHeaderAuthenticator', () => {

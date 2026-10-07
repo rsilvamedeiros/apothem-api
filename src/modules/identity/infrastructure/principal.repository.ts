@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import type { Database } from '../../../infrastructure/database/client.js';
 import { principals, type NewPrincipal, type Principal } from './schema.js';
 import type { PrincipalPort } from '../application/principal.port.js';
@@ -12,7 +12,7 @@ export class PrincipalRepository implements PrincipalPort {
   }
 
   async findByEmail(email: string): Promise<Principal | undefined> {
-    const [row] = await this.db.select().from(principals).where(eq(principals.email, email)).limit(1);
+    const [row] = await this.db.select().from(principals).where(sql`lower(${principals.email}) = ${email.trim().toLowerCase()}`).limit(1);
     return row;
   }
 
