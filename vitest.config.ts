@@ -24,7 +24,8 @@ export default defineConfig({
         // Security-critical code carries a higher floor.
         'src/modules/authorization/**': { lines: 90, functions: 90, branches: 87, statements: 90 },
         'src/modules/approvals/application/**': { lines: 90, functions: 90, branches: 85, statements: 90 },
-        'src/modules/tools/**': { lines: 90, functions: 90, branches: 85, statements: 90 },
+        'src/modules/tools/domain/**': { lines: 90, functions: 90, branches: 85, statements: 90 },
+        'src/modules/tools/application/**': { lines: 90, functions: 90, branches: 85, statements: 90 },
         'src/modules/runs/application/**': { lines: 88, functions: 88, branches: 82, statements: 88 },
         'src/modules/models/application/**': { lines: 90, functions: 85, branches: 80, statements: 85 },
         'src/modules/agents/application/**': { lines: 90, functions: 85, branches: 80, statements: 85 },
