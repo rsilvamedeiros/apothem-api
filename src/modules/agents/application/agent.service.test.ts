@@ -153,6 +153,30 @@ describe('AgentService', () => {
       expect(await versions.findLatestVersionNumber(agent.id)).toBe(0);
     });
 
+    it('rejects tool bindings that name unknown tools or break the contract, without echoing the name', async () => {
+      const { agent } = await service.create(builder, { name: 'A', slug: 'a' });
+      await service.updateDraft(builder, agent.id, { instructions: 'x', toolBindings: [{ tool: 'drop_database_xyz', approval: 'auto' }] });
+      const error = await service.publish(admin, agent.id).catch((e: Error) => e);
+      expect(error).toBeInstanceOf(InvalidInputError);
+      expect((error as Error).message).toMatch(/Invalid tool bindings/);
+      expect((error as Error).message).not.toContain('drop_database_xyz');
+
+      await service.updateDraft(builder, agent.id, { toolBindings: [{ tool: 'create_note' }] });
+      await expect(service.publish(admin, agent.id)).rejects.toThrow(/Invalid tool bindings/);
+    });
+
+    it('publishes a draft whose tool bindings are valid', async () => {
+      const { agent } = await service.create(builder, { name: 'A', slug: 'a' });
+      await service.updateDraft(builder, agent.id, {
+        instructions: 'x',
+        toolBindings: [
+          { tool: 'get_current_time', approval: 'auto' },
+          { tool: 'create_note', approval: 'required' },
+        ],
+      });
+      await expect(service.publish(admin, agent.id)).resolves.toMatchObject({ versionNumber: 1 });
+    });
+
     it('publishes a draft with a valid model policy and guardrails', async () => {
       const { agent } = await service.create(builder, { name: 'A', slug: 'a' });
       await service.updateDraft(builder, agent.id, {

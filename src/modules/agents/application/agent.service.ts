@@ -5,6 +5,7 @@ import type { AuditPort } from '../../audit/application/audit.port.js';
 import { ConflictError, ForbiddenError, InvalidInputError, NotFoundError } from '../../../common/errors.js';
 import { canonicalJson } from './canonical-json.js';
 import { parseGuardrails, parseModelPolicy } from '../domain/agent-config.js';
+import { parseToolBindings } from '../../tools/domain/tool-bindings.js';
 import type { AgentPort } from './agent.port.js';
 import type { AgentDraftPatch, AgentDraftPort } from './agent-draft.port.js';
 import type { AgentVersionPort } from './agent-version.port.js';
@@ -156,6 +157,10 @@ export class AgentService {
     const guardrails = parseGuardrails(draft.guardrails);
     if (!guardrails.ok) {
       throw new InvalidInputError(`Invalid guardrails: ${guardrails.issues.join('; ')}`);
+    }
+    const toolBindings = parseToolBindings(draft.toolBindings);
+    if (!toolBindings.ok) {
+      throw new InvalidInputError(`Invalid tool bindings: ${toolBindings.issues.join('; ')}`);
     }
 
     const snapshot = {
