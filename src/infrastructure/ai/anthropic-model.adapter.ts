@@ -28,8 +28,9 @@ export class AnthropicModelAdapter implements ModelAdapter {
 
   private readonly client: Anthropic;
 
-  constructor(apiKey: string) {
-    this.client = new Anthropic({ apiKey });
+  /** `client` is a test seam so the adapter can be exercised without network or cost. */
+  constructor(apiKey: string, client?: Anthropic) {
+    this.client = client ?? new Anthropic({ apiKey });
   }
 
   async generate(model: string, request: GenerateRequest): Promise<GenerateResult> {
