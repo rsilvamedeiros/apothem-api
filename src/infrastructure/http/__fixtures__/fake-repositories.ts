@@ -21,6 +21,9 @@ import type { WorkspaceMembershipPort } from '../../../modules/workspaces/applic
 import type { Agent, NewAgent, AgentDraft, NewAgentDraft, AgentVersion, NewAgentVersion } from '../../../modules/agents/infrastructure/schema.js';
 import type { AgentPort } from '../../../modules/agents/application/agent.port.js';
 import type { AgentDraftPatch, AgentDraftPort } from '../../../modules/agents/application/agent-draft.port.js';
+import type { RunFilter, RunPageRequest, RunPatch, RunPort, RunStepPort } from '../../../modules/runs/application/run.port.js';
+import type { NewRun, NewRunStep, Run, RunStep } from '../../../modules/runs/infrastructure/schema.js';
+import type { RunStatus } from '../../../modules/runs/domain/run-state.js';
 import type { AgentVersionPort } from '../../../modules/agents/application/agent-version.port.js';
 
 /**
@@ -359,5 +362,111 @@ export class FakeAuditLog extends FakeAuditReader implements AuditPort {
       metadata: event.metadata ?? null,
       createdAt: new Date(this.lastTimestamp),
     });
+  }
+}
+
+export class FakeRunRepository implements RunPort {
+  readonly rows: Run[] = [];
+  private lastTimestamp = 0;
+
+  async create(input: NewRun): Promise<Run> {
+    if (input.idempotencyKey && this.rows.some((r) => r.workspaceId === input.workspaceId && r.idempotencyKey === input.idempotencyKey)) {
+      throw new Error('duplicate key value violates unique constraint "runs_workspace_idempotency_uq"');
+    }
+    // Strictly increasing, like a database clock with sub-millisecond precision.
+    this.lastTimestamp = Math.max(Date.now(), this.lastTimestamp + 1);
+    const row: Run = {
+      id: input.id ?? nextId('run'),
+      organizationId: input.organizationId,
+      workspaceId: input.workspaceId,
+      agentId: input.agentId,
+      agentVersionId: input.agentVersionId,
+      requestedByPrincipalId: input.requestedByPrincipalId,
+      status: input.status ?? 'queued',
+      idempotencyKey: input.idempotencyKey ?? null,
+      input: input.input,
+      output: input.output ?? null,
+      errorCode: input.errorCode ?? null,
+      errorMessage: input.errorMessage ?? null,
+      modelProvider: input.modelProvider ?? null,
+      model: input.model ?? null,
+      inputTokens: input.inputTokens ?? null,
+      outputTokens: input.outputTokens ?? null,
+      createdAt: new Date(this.lastTimestamp),
+      startedAt: input.startedAt ?? null,
+      finishedAt: input.finishedAt ?? null,
+    };
+    this.rows.push(row);
+    return { ...row };
+  }
+
+  async findById(workspaceId: string, runId: string): Promise<Run | undefined> {
+    const row = this.rows.find((r) => r.workspaceId === workspaceId && r.id === runId);
+    return row ? { ...row } : undefined;
+  }
+
+  async findByIdempotencyKey(workspaceId: string, key: string): Promise<Run | undefined> {
+    const row = this.rows.find((r) => r.workspaceId === workspaceId && r.idempotencyKey === key);
+    return row ? { ...row } : undefined;
+  }
+
+  async list(workspaceId: string, filter: RunFilter, page: RunPageRequest): Promise<Run[]> {
+    return this.rows
+      .filter((r) => r.workspaceId === workspaceId)
+      .filter((r) => !filter.agentId || r.agentId === filter.agentId)
+      .filter((r) => !filter.requestedByPrincipalId || r.requestedByPrincipalId === filter.requestedByPrincipalId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
+      .filter((r) => {
+        if (!page.after) return true;
+        const time = r.createdAt.getTime();
+        const afterTime = page.after.createdAt.getTime();
+        return time < afterTime || (time === afterTime && r.id < page.after.id);
+      })
+      .slice(0, page.limit)
+      .map((r) => ({ ...r }));
+  }
+
+  async advance(
+    workspaceId: string,
+    runId: string,
+    from: RunStatus,
+    to: RunStatus,
+    patch: RunPatch = {},
+  ): Promise<Run | undefined> {
+    const row = this.rows.find((r) => r.workspaceId === workspaceId && r.id === runId && r.status === from);
+    if (!row) return undefined;
+    Object.assign(row, patch, { status: to });
+    return { ...row };
+  }
+}
+
+export class FakeRunStepRepository implements RunStepPort {
+  readonly rows: RunStep[] = [];
+
+  async create(input: NewRunStep): Promise<RunStep> {
+    if (this.rows.some((r) => r.runId === input.runId && r.sequence === input.sequence)) {
+      throw new Error('duplicate key value violates unique constraint "run_steps_run_sequence_uq"');
+    }
+    const row: RunStep = {
+      id: input.id ?? nextId('run-step'),
+      runId: input.runId,
+      sequence: input.sequence,
+      type: input.type,
+      status: input.status,
+      modelProvider: input.modelProvider ?? null,
+      model: input.model ?? null,
+      inputTokens: input.inputTokens ?? null,
+      outputTokens: input.outputTokens ?? null,
+      finishReason: input.finishReason ?? null,
+      durationMs: input.durationMs ?? null,
+      errorCode: input.errorCode ?? null,
+      createdAt: new Date(),
+    };
+    this.rows.push(row);
+    return { ...row };
+  }
+
+  async listByRun(runId: string): Promise<RunStep[]> {
+    return this.rows.filter((r) => r.runId === runId).sort((a, b) => a.sequence - b.sequence).map((r) => ({ ...r }));
   }
 }
