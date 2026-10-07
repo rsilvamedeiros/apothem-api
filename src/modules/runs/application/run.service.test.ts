@@ -65,7 +65,6 @@ describe('RunService', () => {
 
   const admin = contextFor('admin');
   const builder = contextFor('builder');
-  const operator = contextFor('operator');
 
   beforeEach(() => {
     agents = new FakeAgentRepository();
