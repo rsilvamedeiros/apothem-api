@@ -52,13 +52,16 @@ export function toolCallResult(toolName: string, args: unknown): GenerateResult 
   };
 }
 
-/** Gateway double: records every call and answers from a script (the last answer repeats). */
+/** Gateway double: records every call and answers from a script (the last answer repeats). Each `respondWith` restarts the script. */
 export class ScriptedGateway implements ModelGatewayPort {
   readonly calls: { policy: ModelPolicy; request: GenerateRequest }[] = [];
   private script: ((policy: ModelPolicy, request: GenerateRequest) => Promise<GenerateResult>)[] = [];
 
-  /** Queue answers in order. */
+  private scriptStart = 0;
+
+  /** Queue answers in order, starting from the next call. */
   respondWith(...answers: (GenerateResult | Error | ((request: GenerateRequest) => GenerateResult | Promise<GenerateResult>))[]): void {
+    this.scriptStart = this.calls.length;
     this.script = answers.map((answer) => async (_policy, request) => {
       if (answer instanceof Error) throw answer;
       return typeof answer === 'function' ? answer(request) : answer;
@@ -67,7 +70,7 @@ export class ScriptedGateway implements ModelGatewayPort {
 
   async generate(policy: ModelPolicy, request: GenerateRequest): Promise<GenerateResult> {
     this.calls.push({ policy, request });
-    const index = Math.min(this.calls.length - 1, this.script.length - 1);
+    const index = Math.min(this.calls.length - 1 - this.scriptStart, this.script.length - 1);
     const step = this.script[index];
     return step ? step(policy, request) : textResult('hello');
   }
