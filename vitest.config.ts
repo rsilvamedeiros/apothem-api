@@ -15,14 +15,14 @@ export default defineConfig({
       reporter: ['text-summary', 'json-summary', 'lcov'],
       // Floors are a ratchet: raise them as coverage grows, never lower them.
       thresholds: {
-        lines: 85,
-        functions: 80,
-        branches: 85,
-        statements: 85,
+        lines: 88,
+        functions: 84,
+        branches: 88,
+        statements: 88,
         // Security-critical code carries a higher floor.
-        'src/modules/authorization/**': { lines: 90, functions: 90, branches: 85, statements: 90 },
-        'src/modules/models/application/**': { lines: 85, functions: 85, branches: 80, statements: 85 },
-        'src/modules/agents/application/**': { lines: 85, functions: 85, branches: 80, statements: 85 },
+        'src/modules/authorization/**': { lines: 90, functions: 90, branches: 88, statements: 90 },
+        'src/modules/models/application/**': { lines: 88, functions: 85, branches: 80, statements: 85 },
+        'src/modules/agents/application/**': { lines: 88, functions: 85, branches: 80, statements: 85 },
       },
     },
   },

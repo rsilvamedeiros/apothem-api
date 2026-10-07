@@ -10,6 +10,9 @@
     "src/modules/models/application/*.ts",
     "src/modules/audit/application/*.ts",
     "src/modules/organizations/application/*.ts",
+    "src/modules/identity/infrastructure/jwt-authenticator.ts",
+    "src/infrastructure/http/tenant-context.middleware.ts",
+    "src/infrastructure/http/build-authenticator.ts",
     "!src/**/*.test.ts",
     "!src/**/*.port.ts",
     "!src/modules/authorization/**/__fixtures__/**"
