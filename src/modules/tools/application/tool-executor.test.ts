@@ -25,6 +25,15 @@ describe('BuiltInToolExecutor', () => {
     expect(notes.rows).toHaveLength(0);
   });
 
+  it('uses the real clock by default', async () => {
+    const before = Date.now();
+    const outcome = await new BuiltInToolExecutor(notes).execute(context, 'get_current_time', {}, 'k-clock');
+    expect(outcome.ok).toBe(true);
+    const reported = outcome.ok ? new Date(String(outcome.result.now)).getTime() : 0;
+    expect(reported).toBeGreaterThanOrEqual(before);
+    expect(reported).toBeLessThanOrEqual(Date.now());
+  });
+
   it('create_note writes a note scoped to the run workspace and attributed to the requester', async () => {
     const outcome = await executor.execute(context, 'create_note', { title: 'Call back', body: 'Tomorrow 10am' }, 'k-2');
     expect(outcome.ok).toBe(true);
