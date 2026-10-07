@@ -23,6 +23,10 @@ import type { AgentPort } from '../../../modules/agents/application/agent.port.j
 import type { AgentDraftPatch, AgentDraftPort } from '../../../modules/agents/application/agent-draft.port.js';
 import type { RunFilter, RunPageRequest, RunPatch, RunPort, RunStepPort } from '../../../modules/runs/application/run.port.js';
 import type { NewRun, NewRunStep, Run, RunStep } from '../../../modules/runs/infrastructure/schema.js';
+import type { ApprovalDecisionPatch, ApprovalFilter, ApprovalPageRequest, ApprovalPort } from '../../../modules/approvals/application/approval.port.js';
+import type { Approval, NewApproval } from '../../../modules/approvals/infrastructure/schema.js';
+import type { NotePort } from '../../../modules/tools/application/note.port.js';
+import type { NewWorkspaceNote, WorkspaceNote } from '../../../modules/tools/infrastructure/schema.js';
 import type { RunStatus } from '../../../modules/runs/domain/run-state.js';
 import type { AgentVersionPort } from '../../../modules/agents/application/agent-version.port.js';
 
@@ -469,5 +473,108 @@ export class FakeRunStepRepository implements RunStepPort {
 
   async listByRun(runId: string): Promise<RunStep[]> {
     return this.rows.filter((r) => r.runId === runId).sort((a, b) => a.sequence - b.sequence).map((r) => ({ ...r }));
+  }
+}
+
+export class FakeNoteRepository implements NotePort {
+  readonly rows: WorkspaceNote[] = [];
+
+  async create(input: NewWorkspaceNote): Promise<WorkspaceNote> {
+    if (this.rows.some((n) => n.workspaceId === input.workspaceId && n.idempotencyKey === input.idempotencyKey)) {
+      throw new Error('duplicate key value violates unique constraint "workspace_notes_idempotency_uq"');
+    }
+    const row: WorkspaceNote = {
+      id: input.id ?? nextId('note'),
+      organizationId: input.organizationId,
+      workspaceId: input.workspaceId,
+      title: input.title,
+      body: input.body,
+      createdByPrincipalId: input.createdByPrincipalId,
+      idempotencyKey: input.idempotencyKey,
+      createdByRunId: input.createdByRunId ?? null,
+      createdAt: new Date(),
+      deletedAt: null,
+    };
+    this.rows.push(row);
+    return { ...row };
+  }
+
+  async findByIdempotencyKey(workspaceId: string, key: string): Promise<WorkspaceNote | undefined> {
+    const row = this.rows.find((n) => n.workspaceId === workspaceId && n.idempotencyKey === key);
+    return row ? { ...row } : undefined;
+  }
+}
+
+export class FakeApprovalRepository implements ApprovalPort {
+  readonly rows: Approval[] = [];
+  private lastTimestamp = 0;
+
+  async create(input: NewApproval): Promise<Approval> {
+    if (this.rows.some((a) => a.runId === input.runId && a.stepSequence === input.stepSequence)) {
+      throw new Error('duplicate key value violates unique constraint "approvals_run_step_uq"');
+    }
+    if ((input.status ?? 'pending') === 'pending' && this.rows.some((a) => a.runId === input.runId && a.status === 'pending')) {
+      throw new Error('duplicate key value violates unique constraint "approvals_one_pending_per_run_uq"');
+    }
+    this.lastTimestamp = Math.max(Date.now(), this.lastTimestamp + 1);
+    const row: Approval = {
+      id: input.id ?? nextId('approval'),
+      organizationId: input.organizationId,
+      workspaceId: input.workspaceId,
+      agentId: input.agentId,
+      runId: input.runId,
+      stepSequence: input.stepSequence,
+      toolName: input.toolName,
+      arguments: input.arguments,
+      requestedByPrincipalId: input.requestedByPrincipalId,
+      status: input.status ?? 'pending',
+      expiresAt: input.expiresAt,
+      decidedByPrincipalId: null,
+      decisionReason: null,
+      selfApproved: false,
+      decidedAt: null,
+      createdAt: new Date(this.lastTimestamp),
+    };
+    this.rows.push(row);
+    return { ...row };
+  }
+
+  async findById(workspaceId: string, approvalId: string): Promise<Approval | undefined> {
+    const row = this.rows.find((a) => a.workspaceId === workspaceId && a.id === approvalId);
+    return row ? { ...row } : undefined;
+  }
+
+  async findPendingByRun(workspaceId: string, runId: string): Promise<Approval | undefined> {
+    const row = this.rows.find((a) => a.workspaceId === workspaceId && a.runId === runId && a.status === 'pending');
+    return row ? { ...row } : undefined;
+  }
+
+  async list(workspaceId: string, filter: ApprovalFilter, page: ApprovalPageRequest): Promise<Approval[]> {
+    return this.rows
+      .filter((a) => a.workspaceId === workspaceId)
+      .filter((a) => !filter.status || a.status === filter.status)
+      .filter((a) => !filter.runId || a.runId === filter.runId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
+      .filter((a) => {
+        if (!page.after) return true;
+        const time = a.createdAt.getTime();
+        const afterTime = page.after.createdAt.getTime();
+        return time < afterTime || (time === afterTime && a.id < page.after.id);
+      })
+      .slice(0, page.limit)
+      .map((a) => ({ ...a }));
+  }
+
+  async decide(workspaceId: string, approvalId: string, patch: ApprovalDecisionPatch): Promise<Approval | undefined> {
+    const row = this.rows.find((a) => a.workspaceId === workspaceId && a.id === approvalId && a.status === 'pending');
+    if (!row) return undefined;
+    Object.assign(row, {
+      status: patch.status,
+      decidedByPrincipalId: patch.decidedByPrincipalId ?? null,
+      decisionReason: patch.decisionReason ?? null,
+      selfApproved: patch.selfApproved ?? false,
+      decidedAt: patch.decidedAt,
+    });
+    return { ...row };
   }
 }
