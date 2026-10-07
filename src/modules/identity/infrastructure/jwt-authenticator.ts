@@ -2,6 +2,7 @@ import { jwtVerify, type CryptoKey, type JWTVerifyGetKey, type KeyObject } from 
 import type { AuthenticationPort } from '../application/authentication.port.js';
 import type { AuthenticatedPrincipal } from '../application/principal.js';
 import type { PrincipalReaderPort } from '../application/principal-reader.port.js';
+import type { PrincipalProvisionerPort } from '../application/principal-provisioner.js';
 
 export interface JwtAuthenticatorConfig {
   readonly issuer: string;
@@ -10,6 +11,8 @@ export interface JwtAuthenticatorConfig {
   readonly key: Uint8Array | CryptoKey | KeyObject | JWTVerifyGetKey;
   /** Explicit allow list. Never derived from the token header, which prevents algorithm confusion. */
   readonly algorithms: readonly string[];
+  /** When set, a verified email without an account gets one (sign-up). Leave unset to admit existing accounts only. */
+  readonly provisioner?: PrincipalProvisionerPort;
 }
 
 /** Small tolerance for clock drift between the identity provider and this API. */
@@ -52,7 +55,11 @@ export class JwtAuthenticator implements AuthenticationPort {
       // Only a provider-verified address may be matched to an account.
       if (emailVerified !== true) return null;
 
-      return (await this.principals.findByEmail(email)) ?? null;
+      const existing = await this.principals.findByEmail(email);
+      if (existing) return existing;
+      if (!this.config.provisioner) return null;
+
+      return (await this.config.provisioner.provision({ email, name: typeof payload.name === 'string' ? payload.name : undefined })) ?? null;
     } catch {
       return null;
     }

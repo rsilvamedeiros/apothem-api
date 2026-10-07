@@ -163,3 +163,64 @@ describe('JwtAuthenticator (asymmetric keys / JWKS)', () => {
     await expect(authenticator.authenticate(await hs256({}))).resolves.toBeNull();
   });
 });
+
+describe('JwtAuthenticator (just-in-time provisioning)', () => {
+  const NEWCOMER = { email: 'newcomer@example.com' };
+
+  function withProvisioner() {
+    const created: { email: string; name?: string | undefined }[] = [];
+    const reader = new FakeReader();
+    const provisioner = {
+      provision: async (input: { email: string; name?: string | undefined }) => {
+        created.push(input);
+        return { id: 'principal-new', type: 'user' as const, email: input.email, name: input.name ?? 'n' };
+      },
+    };
+    return { authenticator: build({ provisioner }, reader).authenticator, created };
+  }
+
+  it('creates an account for a verified email that has none, using the name claim', async () => {
+    const { authenticator, created } = withProvisioner();
+    const principal = await authenticator.authenticate(await hs256({ ...NEWCOMER, name: 'New Comer' }));
+    expect(principal?.id).toBe('principal-new');
+    expect(created).toEqual([{ email: NEWCOMER.email, name: 'New Comer' }]);
+  });
+
+  it('does not provision when the account already exists', async () => {
+    const { authenticator, created } = withProvisioner();
+    await expect(authenticator.authenticate(await hs256({}))).resolves.toEqual(ALICE);
+    expect(created).toEqual([]);
+  });
+
+  it('never provisions for an unverified email or an invalid token', async () => {
+    const { authenticator, created } = withProvisioner();
+    await expect(authenticator.authenticate(await hs256({ ...NEWCOMER, email_verified: false }))).resolves.toBeNull();
+    await expect(authenticator.authenticate(await hs256({ ...NEWCOMER }, { audience: 'other' }))).resolves.toBeNull();
+    await expect(authenticator.authenticate('garbage')).resolves.toBeNull();
+    expect(created).toEqual([]);
+  });
+
+  it('ignores a non-string name claim', async () => {
+    const { authenticator, created } = withProvisioner();
+    await authenticator.authenticate(await hs256({ ...NEWCOMER, name: { evil: true } }));
+    expect(created).toEqual([{ email: NEWCOMER.email, name: undefined }]);
+  });
+
+  it('fails closed when provisioning declines or throws', async () => {
+    const declines = build({ provisioner: { provision: async () => undefined } }).authenticator;
+    await expect(declines.authenticate(await hs256({ ...NEWCOMER }))).resolves.toBeNull();
+    const throws = build({
+      provisioner: {
+        provision: async () => {
+          throw new Error('db down');
+        },
+      },
+    }).authenticator;
+    await expect(throws.authenticate(await hs256({ ...NEWCOMER }))).resolves.toBeNull();
+  });
+
+  it('does not create accounts when no provisioner is configured', async () => {
+    const { authenticator } = build();
+    await expect(authenticator.authenticate(await hs256({ ...NEWCOMER }))).resolves.toBeNull();
+  });
+});
