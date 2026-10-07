@@ -24,6 +24,8 @@ const CLOCK_TOLERANCE_SECONDS = 5;
  * and never throws, so callers answer 401 without leaking why.
  */
 export class JwtAuthenticator implements AuthenticationPort {
+  readonly credentialSource = 'bearer' as const;
+
   constructor(
     private readonly principals: PrincipalReaderPort,
     private readonly config: JwtAuthenticatorConfig,

@@ -12,6 +12,8 @@ import type { PrincipalReaderPort } from '../application/principal-reader.port.j
  * no cryptographic verification of the credential.
  */
 export class DevHeaderAuthenticator implements AuthenticationPort {
+  readonly credentialSource = 'x-principal-id' as const;
+
   constructor(private readonly principals: PrincipalReaderPort) {}
 
   async authenticate(credential: string | undefined): Promise<AuthenticatedPrincipal | null> {
