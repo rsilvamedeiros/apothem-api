@@ -26,6 +26,7 @@ const EXPECTED: Record<OrganizationRole, readonly Capability[]> = {
     'knowledge.use',
     'connection.manage',
     'agent.run',
+    'approval.decide',
     'run.read',
     'audit.read',
     'apikey.manage',
@@ -42,6 +43,7 @@ const EXPECTED: Record<OrganizationRole, readonly Capability[]> = {
     'knowledge.use',
     'connection.manage',
     'agent.run',
+    'approval.decide',
     'run.read',
     'audit.read',
     'apikey.manage',
@@ -92,9 +94,9 @@ describe('permission matrix (golden)', () => {
     });
   }
 
-  it('grants approval.decide to no default role (it is policy-driven, never a blanket grant)', () => {
+  it('grants approval.decide only to owner and admin, never to builder, operator or auditor (separate duties from authoring and running)', () => {
     for (const role of ORGANIZATION_ROLES) {
-      expect(service.can(contextFor(role), 'approval.decide')).toBe(false);
+      expect(service.can(contextFor(role), 'approval.decide')).toBe(role === 'owner' || role === 'admin');
     }
   });
 });
