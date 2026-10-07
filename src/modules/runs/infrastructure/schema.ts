@@ -3,7 +3,14 @@ import { organizations } from '../../organizations/infrastructure/schema.js';
 import { workspaces } from '../../workspaces/infrastructure/schema.js';
 import { agents, agentVersions } from '../../agents/infrastructure/schema.js';
 
-export const runStatusEnum = pgEnum('run_status', ['queued', 'running', 'completed', 'failed', 'cancelled']);
+export const runStatusEnum = pgEnum('run_status', [
+  'queued',
+  'running',
+  'waiting_approval',
+  'completed',
+  'failed',
+  'cancelled',
+]);
 
 /**
  * Durable record of one execution attempt. Terminal rows are never rewritten:
@@ -74,6 +81,12 @@ export const runSteps = pgTable(
     finishReason: text('finish_reason'),
     durationMs: integer('duration_ms'),
     errorCode: text('error_code'),
+    /**
+     * Bounded, structured detail for tool steps (tool name, validated arguments,
+     * policy outcome, normalized result). Arguments may hold personal data, so
+     * this follows the run's retention policy and is never copied to audit.
+     */
+    detail: jsonb('detail'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [uniqueIndex('run_steps_run_sequence_uq').on(table.runId, table.sequence)],

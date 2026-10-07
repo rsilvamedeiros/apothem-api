@@ -10,3 +10,5 @@ export * from '../../modules/workspaces/infrastructure/schema.js';
 export * from '../../modules/audit/infrastructure/schema.js';
 export * from '../../modules/agents/infrastructure/schema.js';
 export * from '../../modules/runs/infrastructure/schema.js';
+export * from '../../modules/approvals/infrastructure/schema.js';
+export * from '../../modules/tools/infrastructure/schema.js';

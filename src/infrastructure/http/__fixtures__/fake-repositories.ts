@@ -460,6 +460,7 @@ export class FakeRunStepRepository implements RunStepPort {
       finishReason: input.finishReason ?? null,
       durationMs: input.durationMs ?? null,
       errorCode: input.errorCode ?? null,
+      detail: input.detail ?? null,
       createdAt: new Date(),
     };
     this.rows.push(row);

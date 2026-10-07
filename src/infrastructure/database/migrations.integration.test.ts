@@ -38,6 +38,8 @@ describe('committed migrations (integration)', () => {
         'agent_versions',
         'runs',
         'run_steps',
+        'approvals',
+        'workspace_notes',
       ]),
     );
   });
