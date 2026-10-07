@@ -7,11 +7,11 @@ export const DEFAULT_AUDIT_PAGE_SIZE = 50;
 export const MAX_AUDIT_PAGE_SIZE = 200;
 
 export interface AuditQuery {
-  readonly limit?: number;
-  readonly cursor?: string;
-  readonly workspaceId?: string;
-  readonly action?: string;
-  readonly actorPrincipalId?: string;
+  readonly limit?: number | undefined;
+  readonly cursor?: string | undefined;
+  readonly workspaceId?: string | undefined;
+  readonly action?: string | undefined;
+  readonly actorPrincipalId?: string | undefined;
 }
 
 export interface AuditPage {
