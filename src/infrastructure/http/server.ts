@@ -75,17 +75,16 @@ export async function buildServer(env: Env, db: Database, services?: AppServices
 
   app.get('/v1/openapi.json', async () => app.swagger());
 
-  const resolvedServices = services ?? buildAppServices(db);
+  const resolvedServices = services ?? buildAppServices(db, env);
   await app.register(organizationRoutes, { services: resolvedServices });
   await app.register(memberRoutes, { services: resolvedServices });
   await app.register(workspaceRoutes, { services: resolvedServices });
   await app.register(agentRoutes, { services: resolvedServices });
   await app.register(auditRoutes, { services: resolvedServices });
 
-  if (env.NODE_ENV === 'production') {
-    app.log.warn(
-      'AuthenticationPort is still the DevHeaderAuthenticator bootstrap adapter â€” replace with self-hosted OIDC before real production use (ADR-009).',
-    );
+  if (env.AUTH_MODE === 'dev') {
+    // loadEnv refuses this combination in production; the warning is for local runs.
+    app.log.warn('AUTH_MODE=dev: the x-principal-id header is trusted without verification. Never expose this.');
   }
 
   return app;

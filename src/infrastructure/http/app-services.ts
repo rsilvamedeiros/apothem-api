@@ -1,7 +1,8 @@
 import type { Database } from '../database/client.js';
 import { PrincipalRepository } from '../../modules/identity/infrastructure/principal.repository.js';
 import { ActivePrincipalReader } from '../../modules/identity/infrastructure/active-principal-reader.js';
-import { DevHeaderAuthenticator } from '../../modules/identity/infrastructure/dev-header-authenticator.js';
+import type { Env } from './env.js';
+import { buildAuthenticator } from './build-authenticator.js';
 import { MembershipRepository } from '../../modules/organizations/infrastructure/membership.repository.js';
 import { OrganizationRepository } from '../../modules/organizations/infrastructure/organization.repository.js';
 import { WorkspaceRepository } from '../../modules/workspaces/infrastructure/workspace.repository.js';
@@ -31,19 +32,18 @@ export interface AppServices {
 }
 
 /**
- * Composition root for request-scoped services. `authenticator` is the
- * DevHeaderAuthenticator bootstrap adapter (see identity/infrastructure) â€”
- * swap this for a real OIDC-backed AuthenticationPort implementation without
- * touching callers, since they only depend on the AuthenticationPort type.
+ * Composition root for request-scoped services. `authenticator` is chosen by
+ * AUTH_MODE (see build-authenticator.ts): the dev header adapter locally, a
+ * verified-JWT adapter in production. Callers only depend on AuthenticationPort.
  */
-export function buildAppServices(db: Database): AppServices {
+export function buildAppServices(db: Database, env: Env): AppServices {
   const principals = new PrincipalRepository(db);
   const memberships = new MembershipRepository(db);
   const workspaces = new WorkspaceRepository(db);
   const auditLog = new AuditLogRepository(db);
   const authorizationService = new AuthorizationService();
 
-  const authenticator = new DevHeaderAuthenticator(new ActivePrincipalReader(principals));
+  const authenticator = buildAuthenticator(env, new ActivePrincipalReader(principals));
   const tenantContextResolver = new TenantContextResolver(
     memberships,
     workspaces,
