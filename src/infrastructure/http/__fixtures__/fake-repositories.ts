@@ -1,4 +1,10 @@
-import type { AuditEvent, AuditPort } from '../../../modules/audit/application/audit.port.js';
+﻿import type { AuditEvent, AuditPort } from '../../../modules/audit/application/audit.port.js';
+import type {
+  AuditEventFilter,
+  AuditPageRequest,
+  AuditReaderPort,
+  StoredAuditEvent,
+} from '../../../modules/audit/application/audit-reader.port.js';
 import type { Membership, NewMembership } from '../../../modules/organizations/infrastructure/schema.js';
 import type { Organization, NewOrganization } from '../../../modules/organizations/infrastructure/schema.js';
 import type { Principal, NewPrincipal } from '../../../modules/identity/infrastructure/schema.js';
@@ -20,7 +26,7 @@ import type { AgentVersionPort } from '../../../modules/agents/application/agent
 /**
  * In-memory stand-ins for the Drizzle repositories, structurally compatible
  * with the concrete repository classes (same public method shapes) so they
- * can be passed straight into the real application services under test —
+ * can be passed straight into the real application services under test â€”
  * see organizations-workspaces.routes.test.ts. Not a mocking framework: just
  * enough persistence to exercise real business/authorization logic in tests
  * without a database.
@@ -291,5 +297,32 @@ export class FakeAuditLog implements AuditPort {
 
   async record(event: AuditEvent): Promise<void> {
     this.events.push(event);
+  }
+}
+
+/** In-memory audit store: implements the read port and records every query for assertions. */
+export class FakeAuditReader implements AuditReaderPort {
+  private readonly rows: StoredAuditEvent[] = [];
+  readonly queries: { organizationId: string; filter: AuditEventFilter; page: AuditPageRequest }[] = [];
+
+  add(event: StoredAuditEvent): void {
+    this.rows.push(event);
+  }
+
+  async list(organizationId: string, filter: AuditEventFilter, page: AuditPageRequest): Promise<StoredAuditEvent[]> {
+    this.queries.push({ organizationId, filter, page });
+    return this.rows
+      .filter((row) => row.organizationId === organizationId)
+      .filter((row) => !filter.workspaceId || row.workspaceId === filter.workspaceId)
+      .filter((row) => !filter.action || row.action === filter.action)
+      .filter((row) => !filter.actorPrincipalId || row.actorPrincipalId === filter.actorPrincipalId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
+      .filter((row) => {
+        if (!page.after) return true;
+        const time = row.createdAt.getTime();
+        const afterTime = page.after.createdAt.getTime();
+        return time < afterTime || (time === afterTime && row.id < page.after.id);
+      })
+      .slice(0, page.limit);
   }
 }
