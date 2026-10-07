@@ -14,6 +14,7 @@ import { TenantContextResolver } from '../../modules/authorization/application/t
 import { AuthorizationService } from '../../modules/authorization/application/authorization.service.js';
 import { OrganizationService } from '../../modules/organizations/application/organization.service.js';
 import { MemberService } from '../../modules/organizations/application/member.service.js';
+import { AccountService } from '../../modules/organizations/application/account.service.js';
 import { WorkspaceService } from '../../modules/workspaces/application/workspace.service.js';
 import { AgentRepository } from '../../modules/agents/infrastructure/agent.repository.js';
 import { AgentDraftRepository } from '../../modules/agents/infrastructure/agent-draft.repository.js';
@@ -27,6 +28,7 @@ export interface AppServices {
   authorizationService: AuthorizationService;
   organizationService: OrganizationService;
   memberService: MemberService;
+  accountService: AccountService;
   workspaceService: WorkspaceService;
   agentService: AgentService;
   auditQueryService: AuditQueryService;
@@ -42,6 +44,7 @@ export function buildAppServices(db: Database, env: Env): AppServices {
   const memberships = new MembershipRepository(db);
   const workspaces = new WorkspaceRepository(db);
   const auditLog = new AuditLogRepository(db);
+  const organizationRepository = new OrganizationRepository(db);
   const authorizationService = new AuthorizationService();
 
   const authenticator = buildAuthenticator(env, new ActivePrincipalReader(principals), new PrincipalProvisioner(principals));
@@ -62,6 +65,7 @@ export function buildAppServices(db: Database, env: Env): AppServices {
       auditLog,
     ),
     memberService: new MemberService(memberships, principals, authorizationService, auditLog),
+    accountService: new AccountService(organizationRepository, memberships),
     workspaceService: new WorkspaceService(workspaces, authorizationService, auditLog),
     agentService: new AgentService(
       new AgentRepository(db),
