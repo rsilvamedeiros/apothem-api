@@ -49,3 +49,39 @@ describe('AuthorizationService', () => {
     expect(service.can(context, 'run.read')).toBe(false);
   });
 });
+
+describe('AuthorizationService — workspace role scope', () => {
+  const service = new AuthorizationService();
+
+  function workspaceContext(
+    organizationRole: TenantContext['organizationRole'],
+    workspaceRole: TenantContext['organizationRole'],
+  ): TenantContext {
+    return {
+      principal: FIXTURE_PRINCIPALS.operatorA,
+      organizationId: ORG_A,
+      organizationRole,
+      workspaceId: 'workspace-a',
+      workspaceRole,
+    };
+  }
+
+  it('does not let a workspace role grant organization-level capabilities', () => {
+    const context = workspaceContext('operator', 'owner');
+    expect(service.can(context, 'organization.settings.manage')).toBe(false);
+    expect(service.can(context, 'organization.billing.manage')).toBe(false);
+    expect(service.can(context, 'organization.billing.read')).toBe(false);
+  });
+
+  it('still lets the workspace role grant workspace-scoped capabilities', () => {
+    const context = workspaceContext('operator', 'owner');
+    expect(service.can(context, 'agent.publish')).toBe(true);
+    expect(service.can(context, 'connection.manage')).toBe(true);
+  });
+
+  it('keeps organization-level capabilities from the organization role when the workspace role is lower', () => {
+    const context = workspaceContext('owner', 'operator');
+    expect(service.can(context, 'organization.settings.manage')).toBe(true);
+    expect(service.can(context, 'agent.publish')).toBe(false);
+  });
+});

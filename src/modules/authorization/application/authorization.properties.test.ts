@@ -2,7 +2,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { AuthorizationService } from './authorization.service.js';
 import type { TenantContext } from './tenant-context.js';
-import { CAPABILITIES } from '../domain/capability.js';
+import { CAPABILITIES, isOrganizationScoped } from '../domain/capability.js';
 import { ORGANIZATION_ROLES, ROLE_CAPABILITIES } from '../domain/role.js';
 import { FIXTURE_PRINCIPALS } from './__fixtures__/tenant-fixtures.js';
 
@@ -64,9 +64,21 @@ describe('AuthorizationService (properties)', () => {
     fc.assert(
       fc.property(contextArb, capabilityArb, (context, capability) => {
         if (service.can(context, capability)) {
-          const role = context.workspaceRole ?? context.organizationRole;
+          const role = isOrganizationScoped(capability)
+            ? context.organizationRole
+            : (context.workspaceRole ?? context.organizationRole);
           expect(ROLE_CAPABILITIES[role].has(capability)).toBe(true);
         }
+      }),
+    );
+  });
+
+  it('never lets a workspace role change the outcome of an organization-scoped capability', () => {
+    fc.assert(
+      fc.property(contextArb, capabilityArb, (context, capability) => {
+        fc.pre(isOrganizationScoped(capability));
+        const { workspaceRole: _ignored, ...withoutOverride } = context;
+        expect(service.can(context, capability)).toBe(service.can(withoutOverride, capability));
       }),
     );
   });

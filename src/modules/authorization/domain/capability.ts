@@ -25,3 +25,13 @@ export const CAPABILITIES = [
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
+
+/**
+ * Organization-scoped capabilities are always resolved from the organization
+ * role. A workspace-level role override narrows or widens only workspace
+ * capabilities, so it can never be used to escalate to organization
+ * settings or billing.
+ */
+export function isOrganizationScoped(capability: Capability): boolean {
+  return capability.startsWith('organization.');
+}

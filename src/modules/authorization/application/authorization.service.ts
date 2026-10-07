@@ -1,6 +1,6 @@
 import { ForbiddenError } from '../../../common/errors.js';
 import { ROLE_CAPABILITIES } from '../domain/role.js';
-import type { Capability } from '../domain/capability.js';
+import { isOrganizationScoped, type Capability } from '../domain/capability.js';
 import type { TenantContext } from './tenant-context.js';
 
 /**
@@ -10,7 +10,9 @@ import type { TenantContext } from './tenant-context.js';
  */
 export class AuthorizationService {
   can(context: TenantContext, capability: Capability): boolean {
-    const effectiveRole = context.workspaceRole ?? context.organizationRole;
+    const effectiveRole = isOrganizationScoped(capability)
+      ? context.organizationRole
+      : (context.workspaceRole ?? context.organizationRole);
     const capabilities = ROLE_CAPABILITIES[effectiveRole];
     // Unknown/unmapped role fails closed rather than defaulting to allow.
     return capabilities?.has(capability) ?? false;
