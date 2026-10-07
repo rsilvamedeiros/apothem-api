@@ -9,12 +9,15 @@ import { ModelPolicyNoRouteError, ModelProviderError, type ModelErrorClass } fro
 import type { GenerateRequest, GenerateResult, ModelGatewayPort } from '../../models/application/model-gateway.port.js';
 import type { ModelPolicy } from '../../models/domain/model-policy.js';
 import { ModelRouter } from '../../models/application/model-router.js';
+import { BuiltInToolExecutor } from '../../tools/application/tool-executor.js';
 import { MockModelAdapter } from '../../../infrastructure/ai/mock-model.adapter.js';
 import {
   FakeAgentDraftRepository,
   FakeAgentRepository,
   FakeAgentVersionRepository,
+  FakeApprovalRepository,
   FakeAuditLog,
+  FakeNoteRepository,
   FakeRunRepository,
   FakeRunStepRepository,
 } from '../../../infrastructure/http/__fixtures__/fake-repositories.js';
@@ -58,6 +61,8 @@ describe('RunService', () => {
   let versions: FakeAgentVersionRepository;
   let runs: FakeRunRepository;
   let steps: FakeRunStepRepository;
+  let approvals: FakeApprovalRepository;
+  let executor: BuiltInToolExecutor;
   let audit: FakeAuditLog;
   let gateway: ScriptedGateway;
   let agentService: AgentService;
@@ -72,11 +77,13 @@ describe('RunService', () => {
     versions = new FakeAgentVersionRepository();
     runs = new FakeRunRepository();
     steps = new FakeRunStepRepository();
+    approvals = new FakeApprovalRepository();
+    executor = new BuiltInToolExecutor(new FakeNoteRepository());
     audit = new FakeAuditLog();
     gateway = new ScriptedGateway();
     const authorization = new AuthorizationService();
     agentService = new AgentService(agents, drafts, versions, authorization, audit);
-    service = new RunService(agents, versions, runs, steps, gateway, authorization, audit);
+    service = new RunService(agents, versions, runs, steps, approvals, gateway, executor, authorization, audit);
   });
 
   afterEach(() => {
@@ -499,7 +506,7 @@ describe('RunService', () => {
           pricing: { inputUsdPerMillionTokens: 0, outputUsdPerMillionTokens: 0 },
         },
       ]);
-      service = new RunService(agents, versions, runs, steps, router, new AuthorizationService(), audit);
+      service = new RunService(agents, versions, runs, steps, approvals, router, executor, new AuthorizationService(), audit);
     });
 
     it('completes deterministically with the mock provider', async () => {

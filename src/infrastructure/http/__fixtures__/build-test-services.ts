@@ -7,6 +7,7 @@ import { AccountService } from '../../../modules/organizations/application/accou
 import { MemberService } from '../../../modules/organizations/application/member.service.js';
 import { WorkspaceService } from '../../../modules/workspaces/application/workspace.service.js';
 import { AuditQueryService } from '../../../modules/audit/application/audit-query.service.js';
+import { BuiltInToolExecutor } from '../../../modules/tools/application/tool-executor.js';
 import { RunService } from '../../../modules/runs/application/run.service.js';
 import { ModelRouter } from '../../../modules/models/application/model-router.js';
 import { MockModelAdapter } from '../../ai/mock-model.adapter.js';
@@ -16,7 +17,9 @@ import {
   FakeAgentDraftRepository,
   FakeAgentRepository,
   FakeAgentVersionRepository,
+  FakeApprovalRepository,
   FakeAuditLog,
+  FakeNoteRepository,
   FakeRunRepository,
   FakeRunStepRepository,
   FakeMembershipRepository,
@@ -44,6 +47,8 @@ export function buildTestServices(): TestServices {
   const agentRepository = new FakeAgentRepository();
   const agentVersionRepository = new FakeAgentVersionRepository();
   const mock = new MockModelAdapter();
+  const approvals = new FakeApprovalRepository();
+  const notes = new FakeNoteRepository();
 
   const services: AppServices = {
     authenticator: new DevHeaderAuthenticator(new ActivePrincipalReader(principals)),
@@ -59,6 +64,7 @@ export function buildTestServices(): TestServices {
       agentVersionRepository,
       new FakeRunRepository(),
       new FakeRunStepRepository(),
+      approvals,
       new ModelRouter(new Map([['mock', mock]]), [
         {
           provider: 'mock',
@@ -68,6 +74,7 @@ export function buildTestServices(): TestServices {
           pricing: { inputUsdPerMillionTokens: 0, outputUsdPerMillionTokens: 0 },
         },
       ]),
+      new BuiltInToolExecutor(notes),
       authorizationService,
       audit,
     ),

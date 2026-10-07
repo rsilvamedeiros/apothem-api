@@ -22,6 +22,9 @@ import { AgentVersionRepository } from '../../modules/agents/infrastructure/agen
 import { AgentService } from '../../modules/agents/application/agent.service.js';
 import { RunService } from '../../modules/runs/application/run.service.js';
 import { RunRepository, RunStepRepository } from '../../modules/runs/infrastructure/run.repository.js';
+import { ApprovalRepository } from '../../modules/approvals/infrastructure/approval.repository.js';
+import { NoteRepository } from '../../modules/tools/infrastructure/note.repository.js';
+import { BuiltInToolExecutor } from '../../modules/tools/application/tool-executor.js';
 import { buildModelRouter } from '../ai/model-registry.js';
 import type { AuthenticationPort } from '../../modules/identity/application/authentication.port.js';
 
@@ -50,6 +53,7 @@ export function buildAppServices(db: Database, env: Env): AppServices {
   const auditLog = new AuditLogRepository(db);
   const organizationRepository = new OrganizationRepository(db);
   const agentRepository = new AgentRepository(db);
+  const approvalRepository = new ApprovalRepository(db);
   const agentVersionRepository = new AgentVersionRepository(db);
   const authorizationService = new AuthorizationService();
 
@@ -85,7 +89,9 @@ export function buildAppServices(db: Database, env: Env): AppServices {
       agentVersionRepository,
       new RunRepository(db),
       new RunStepRepository(db),
+      approvalRepository,
       buildModelRouter(env),
+      new BuiltInToolExecutor(new NoteRepository(db)),
       authorizationService,
       auditLog,
     ),
