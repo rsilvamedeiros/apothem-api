@@ -26,7 +26,7 @@ import type { AgentVersionPort } from '../../../modules/agents/application/agent
 /**
  * In-memory stand-ins for the Drizzle repositories, structurally compatible
  * with the concrete repository classes (same public method shapes) so they
- * can be passed straight into the real application services under test â€”
+ * can be passed straight into the real application services under test ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
  * see organizations-workspaces.routes.test.ts. Not a mocking framework: just
  * enough persistence to exercise real business/authorization logic in tests
  * without a database.
@@ -324,9 +324,13 @@ export class FakeAuditReader implements AuditReaderPort {
 /** Audit log fake: records events (assertable via events) and serves them through the read port. */
 export class FakeAuditLog extends FakeAuditReader implements AuditPort {
   readonly events: AuditEvent[] = [];
+  private lastTimestamp = 0;
 
   async record(event: AuditEvent): Promise<void> {
     this.events.push(event);
+    // Strictly increasing, like a database clock with sub-millisecond precision,
+    // so tests can assert newest-first order without same-millisecond ties.
+    this.lastTimestamp = Math.max(Date.now(), this.lastTimestamp + 1);
     this.add({
       id: crypto.randomUUID(),
       organizationId: event.organizationId,
@@ -336,7 +340,7 @@ export class FakeAuditLog extends FakeAuditReader implements AuditPort {
       targetType: event.targetType,
       targetId: event.targetId,
       metadata: event.metadata ?? null,
-      createdAt: new Date(),
+      createdAt: new Date(this.lastTimestamp),
     });
   }
 }
