@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildRunKit, contextFor, textResult, toolCallResult, WORKSPACE } from '../../runs/application/__fixtures__/run-kit.js';
 import { ConflictError, ForbiddenError, InvalidInputError, NotFoundError } from '../../../common/errors.js';
 import { DEFAULT_APPROVAL_TTL_MS } from '../../runs/application/run.service.js';
@@ -296,6 +296,173 @@ describe('ApprovalService (ADR-013)', () => {
 
     it('rejects a malformed cursor', async () => {
       await expect(kit.approvalService.list(admin, { cursor: 'garbage' })).rejects.toThrow(InvalidInputError);
+    });
+  });
+  describe('contract details', () => {
+    const auditOf = (action: string) => kit.audit.events.find((e) => e.action === action)!;
+    // waitingRun() reports the first approval; these tests start several runs.
+    const anotherWaitingRun = async () => {
+      const started = await waitingRun();
+      return { ...started, approval: kit.approvals.rows.at(-1)! };
+    };
+
+    it('explains refusals with fixed, specific messages', async () => {
+      const { approval } = await waitingRun();
+      await expect(kit.approvalService.decide(contextFor('admin', 'approver', null), approval.id, { decision: 'approve' })).rejects.toThrow(
+        'Approvals require a resolved workspace scope',
+      );
+      await expect(kit.approvalService.list(contextFor('admin', 'approver', null), {})).rejects.toThrow('Approvals require a resolved workspace scope');
+      await expect(kit.approvalService.decide(admin, '11111111-1111-4111-8111-111111111111', { decision: 'approve' })).rejects.toThrow(
+        'Approval 11111111-1111-4111-8111-111111111111 not found',
+      );
+      await kit.approvalService.decide(admin, approval.id, { decision: 'approve' });
+      await expect(kit.approvalService.decide(admin, approval.id, { decision: 'approve' })).rejects.toThrow('This approval was already approved');
+    });
+
+    it('accepts a reason of exactly 500 characters and names the limit when it is exceeded', async () => {
+      const { approval } = await waitingRun();
+      await expect(kit.approvalService.decide(admin, approval.id, { decision: 'reject', reason: 'x'.repeat(501) })).rejects.toThrow(
+        'Reason must be at most 500 characters',
+      );
+      const result = await kit.approvalService.decide(admin, approval.id, { decision: 'reject', reason: 'x'.repeat(500) });
+      expect(result.approval.decisionReason).toHaveLength(500);
+    });
+
+    it('trims the reason, and treats a blank one as no reason', async () => {
+      const first = await waitingRun();
+      const trimmed = await kit.approvalService.decide(admin, first.approval.id, { decision: 'reject', reason: '  padded  ' });
+      expect(trimmed.approval.decisionReason).toBe('padded');
+
+      const second = await anotherWaitingRun();
+      const blank = await kit.approvalService.decide(admin, second.approval.id, { decision: 'reject', reason: '   ' });
+      expect(blank.approval.decisionReason).toBeNull();
+      expect(kit.audit.events.filter((e) => e.action === 'approval.rejected').map((e) => e.metadata)).toEqual([
+        expect.objectContaining({ hasReason: true }),
+        expect.objectContaining({ hasReason: false }),
+      ]);
+    });
+
+    it('audits whether a reason was given, never the reason, for approve and reject', async () => {
+      const a = await waitingRun();
+      await kit.approvalService.decide(admin, a.approval.id, { decision: 'approve' });
+      expect(auditOf('approval.approved').metadata).toEqual({ runId: a.run.id, tool: 'create_note', selfApproved: false, hasReason: false });
+
+      const b = await anotherWaitingRun();
+      await kit.approvalService.decide(admin, b.approval.id, { decision: 'approve', reason: 'ok' });
+      const withReason = kit.audit.events.filter((e) => e.action === 'approval.approved')[1]!;
+      expect(withReason.metadata).toMatchObject({ hasReason: true });
+      expect(auditOf('approval.approved')).toMatchObject({ targetType: 'approval', targetId: a.approval.id });
+    });
+
+    it('honors an approval decided exactly at its expiry instant', async () => {
+      const { approval } = await waitingRun();
+      kit.clock.current = new Date(approval.expiresAt);
+      const result = await kit.approvalService.decide(admin, approval.id, { decision: 'approve' });
+      expect(result.approval.status).toBe('approved');
+    });
+
+    it('says an expired approval expired, and audits who found it with what it was about', async () => {
+      const { run, approval } = await waitingRun();
+      kit.clock.current = new Date(approval.expiresAt.getTime() + 1);
+      await expect(kit.approvalService.decide(admin, approval.id, { decision: 'approve' })).rejects.toThrow('This approval request expired');
+      expect(auditOf('approval.expired')).toMatchObject({
+        actorPrincipalId: admin.principal.id,
+        targetType: 'approval',
+        targetId: approval.id,
+        metadata: { runId: run.id, tool: 'create_note' },
+      });
+    });
+
+    it('records an invalidation with its cause and tells the caller the request was closed', async () => {
+      const { agent, run, approval } = await waitingRun();
+      await kit.agentService.setLifecycleStatus(admin, agent.id, 'disabled');
+      await expect(kit.approvalService.decide(admin, approval.id, { decision: 'approve' })).rejects.toThrow(
+        'This approval no longer applies and was closed',
+      );
+      expect(kit.approvals.rows[0]).toMatchObject({ status: 'rejected', decisionReason: 'Invalidated: the agent is no longer active' });
+      expect(auditOf('approval.invalidated')).toMatchObject({
+        targetId: approval.id,
+        metadata: { runId: run.id, tool: 'create_note', selfApproved: false, hasReason: true },
+      });
+    });
+
+    it('names a run that stopped waiting as the cause of the invalidation', async () => {
+      const { run, approval } = await waitingRun();
+      await kit.runs.advance(WORKSPACE, run.id, 'waiting_approval', 'cancelled');
+      await expect(kit.approvalService.decide(admin, approval.id, { decision: 'approve' })).rejects.toThrow(ConflictError);
+      expect(kit.approvals.rows[0]!.decisionReason).toBe('Invalidated: the run is no longer waiting');
+    });
+
+    it.each(['approve', 'reject'] as const)('reports a lost race on %s without auditing a decision that did not happen', async (decision) => {
+      const { approval } = await waitingRun();
+      vi.spyOn(kit.approvals, 'decide').mockResolvedValueOnce(undefined);
+      await expect(kit.approvalService.decide(admin, approval.id, { decision })).rejects.toThrow('This approval was already decided');
+      expect(kit.audit.events.map((e) => e.action)).not.toContain(`approval.${decision === 'approve' ? 'approved' : 'rejected'}`);
+      expect(kit.notes.rows).toHaveLength(0);
+    });
+
+    it('does not audit or fail the run when an invalidation lost the race', async () => {
+      const { agent, approval } = await waitingRun();
+      await kit.agentService.setLifecycleStatus(admin, agent.id, 'disabled');
+      vi.spyOn(kit.approvals, 'decide').mockResolvedValueOnce(undefined);
+      await expect(kit.approvalService.decide(admin, approval.id, { decision: 'approve' })).rejects.toThrow(
+        'This approval no longer applies and was closed',
+      );
+      expect(kit.audit.events.map((e) => e.action)).not.toContain('approval.invalidated');
+    });
+
+    it('says why a requester cannot approve their own proposal', async () => {
+      const selfApprover = contextFor('admin', 'approver');
+      const { approval } = await waitingRun(selfApprover);
+      await expect(kit.approvalService.decide(selfApprover, approval.id, { decision: 'approve' })).rejects.toThrow(
+        'Another approver must decide a request you started',
+      );
+    });
+
+    it('does not expire a proposal whose deadline is exactly now when listing', async () => {
+      const { approval } = await waitingRun();
+      kit.clock.current = new Date(approval.expiresAt);
+      const page = await kit.approvalService.list(admin, { status: 'pending' });
+      expect(page.approvals.map((x) => x.id)).toEqual([approval.id]);
+    });
+
+    it('leaves finished approvals alone when sweeping stale ones', async () => {
+      const { approval } = await waitingRun();
+      await kit.approvalService.decide(admin, approval.id, { decision: 'reject' });
+      kit.clock.current = new Date(approval.expiresAt.getTime() + 1000);
+      await kit.approvalService.list(admin, {});
+      expect(kit.approvals.rows[0]!.status).toBe('rejected');
+    });
+
+    describe('paging', () => {
+      async function createApprovals(count: number) {
+        for (let n = 0; n < count; n += 1) {
+          const { agent } = await kit.publishedAgent({ toolBindings: [{ tool: 'create_note', approval: 'required' }] });
+          kit.gateway.respondWith(toolCallResult('create_note', { title: `t${n}`, body: 'b' }));
+          await kit.runService.start(requester, agent.id, { input: `n${n}` });
+        }
+      }
+
+      it('has no next page when the results fit the limit exactly', async () => {
+        await createApprovals(3);
+        const page = await kit.approvalService.list(admin, { limit: 3 });
+        expect(page.approvals).toHaveLength(3);
+        expect(page.nextCursor).toBeNull();
+      });
+
+      it.each([[undefined], [Number.NaN], [Number.POSITIVE_INFINITY]])('falls back to the default page size for limit %s', async (limit) => {
+        await createApprovals(26);
+        const page = await kit.approvalService.list(admin, { limit });
+        expect(page.approvals).toHaveLength(25);
+        expect(page.nextCursor).not.toBeNull();
+      });
+
+      it('never returns fewer than one row for a non-positive or fractional limit', async () => {
+        await createApprovals(2);
+        expect((await kit.approvalService.list(admin, { limit: 0 })).approvals).toHaveLength(1);
+        expect((await kit.approvalService.list(admin, { limit: -5 })).approvals).toHaveLength(1);
+        expect((await kit.approvalService.list(admin, { limit: 1.9 })).approvals).toHaveLength(1);
+      });
     });
   });
 });
