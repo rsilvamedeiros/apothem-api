@@ -34,7 +34,7 @@
       }
     ]
   },
-  "ignorePatterns": ["dist", "node_modules"],
+  "ignorePatterns": ["dist", "node_modules", "coverage", ".stryker-tmp", ".stryker-cache", "reports"],
   "overrides": [
     {
       "files": ["src/infrastructure/ai/**/*.ts"],
