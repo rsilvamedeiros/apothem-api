@@ -36,6 +36,8 @@ describe('committed migrations (integration)', () => {
         'agents',
         'agent_drafts',
         'agent_versions',
+        'runs',
+        'run_steps',
       ]),
     );
   });
