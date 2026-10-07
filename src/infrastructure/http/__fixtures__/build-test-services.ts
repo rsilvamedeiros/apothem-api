@@ -8,6 +8,7 @@ import { MemberService } from '../../../modules/organizations/application/member
 import { WorkspaceService } from '../../../modules/workspaces/application/workspace.service.js';
 import { AuditQueryService } from '../../../modules/audit/application/audit-query.service.js';
 import { BuiltInToolExecutor } from '../../../modules/tools/application/tool-executor.js';
+import { ApprovalService } from '../../../modules/approvals/application/approval.service.js';
 import { RunService } from '../../../modules/runs/application/run.service.js';
 import { ModelRouter } from '../../../modules/models/application/model-router.js';
 import { MockModelAdapter } from '../../ai/mock-model.adapter.js';
@@ -50,6 +51,26 @@ export function buildTestServices(): TestServices {
   const approvals = new FakeApprovalRepository();
   const notes = new FakeNoteRepository();
 
+  const runService = new RunService(
+    agentRepository,
+    agentVersionRepository,
+    new FakeRunRepository(),
+    new FakeRunStepRepository(),
+    approvals,
+    new ModelRouter(new Map([['mock', mock]]), [
+      {
+        provider: 'mock',
+        model: 'mock-1',
+        qualityTier: mock.qualityTier,
+        capabilities: mock.capabilities,
+        pricing: { inputUsdPerMillionTokens: 0, outputUsdPerMillionTokens: 0 },
+      },
+    ]),
+    new BuiltInToolExecutor(notes),
+    authorizationService,
+    audit,
+  );
+
   const services: AppServices = {
     authenticator: new DevHeaderAuthenticator(new ActivePrincipalReader(principals)),
     tenantContextResolver: new TenantContextResolver(memberships, workspaces, workspaceMemberships),
@@ -59,25 +80,8 @@ export function buildTestServices(): TestServices {
     accountService: new AccountService(organizations, memberships),
     workspaceService: new WorkspaceService(workspaces, authorizationService, audit),
     agentService: new AgentService(agentRepository, new FakeAgentDraftRepository(), agentVersionRepository, authorizationService, audit),
-    runService: new RunService(
-      agentRepository,
-      agentVersionRepository,
-      new FakeRunRepository(),
-      new FakeRunStepRepository(),
-      approvals,
-      new ModelRouter(new Map([['mock', mock]]), [
-        {
-          provider: 'mock',
-          model: 'mock-1',
-          qualityTier: mock.qualityTier,
-          capabilities: mock.capabilities,
-          pricing: { inputUsdPerMillionTokens: 0, outputUsdPerMillionTokens: 0 },
-        },
-      ]),
-      new BuiltInToolExecutor(notes),
-      authorizationService,
-      audit,
-    ),
+    runService,
+    approvalService: new ApprovalService(approvals, runService, agentRepository, memberships, authorizationService, audit),
     auditQueryService: new AuditQueryService(audit, authorizationService),
   };
 

@@ -5,6 +5,7 @@ import { resolveTenantContext } from '../../../../infrastructure/http/tenant-con
 import { toJsonSchema, errorResponseJsonSchema } from '../../../../infrastructure/http/openapi.js';
 import { MAX_RUN_INPUT_LENGTH, MAX_RUN_PAGE_SIZE } from '../../application/run.service.js';
 import { RUN_STATUSES } from '../../domain/run-state.js';
+import { approvalResponse, serializeApproval } from '../../../approvals/presentation/http/approvals.routes.js';
 import type { Run, RunStep } from '../../infrastructure/schema.js';
 
 const workspaceParams = z.object({ organizationId: z.string().uuid(), workspaceId: z.string().uuid() });
@@ -60,7 +61,7 @@ const stepResponse = z.object({
 });
 
 const startRunResponse = z.object({ run: runResponse, replayed: z.boolean() });
-const runDetailResponse = z.object({ run: runResponse, steps: z.array(stepResponse) });
+const runDetailResponse = z.object({ run: runResponse, steps: z.array(stepResponse), approvals: z.array(approvalResponse) });
 const runPageResponse = z.object({ runs: z.array(runResponse), nextCursor: z.string().nullable() });
 
 const errorResponses = {
@@ -94,7 +95,8 @@ function serializeRun(run: Run) {
 }
 
 function serializeStep(step: RunStep) {
-  const { runId: _runId, ...rest } = step;
+  // detail carries tool arguments and results: it stays in the record, not in the public step view.
+  const { runId: _runId, detail: _detail, ...rest } = step;
   return { ...rest, createdAt: step.createdAt.toISOString() };
 }
 
@@ -160,7 +162,11 @@ export async function runRoutes(app: FastifyInstance, opts: { services: AppServi
     async (request, reply) => {
       const { organizationId, workspaceId, runId } = runParams.parse(request.params);
       const detail = await services.runService.get(await context(request, organizationId, workspaceId), runId);
-      reply.status(200).send({ run: serializeRun(detail.run), steps: detail.steps.map(serializeStep) });
+      reply.status(200).send({
+        run: serializeRun(detail.run),
+        steps: detail.steps.map(serializeStep),
+        approvals: detail.approvals.map(serializeApproval),
+      });
     },
   );
 }

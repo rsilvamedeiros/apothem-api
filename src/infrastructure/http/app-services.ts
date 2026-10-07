@@ -22,6 +22,7 @@ import { AgentVersionRepository } from '../../modules/agents/infrastructure/agen
 import { AgentService } from '../../modules/agents/application/agent.service.js';
 import { RunService } from '../../modules/runs/application/run.service.js';
 import { RunRepository, RunStepRepository } from '../../modules/runs/infrastructure/run.repository.js';
+import { ApprovalService } from '../../modules/approvals/application/approval.service.js';
 import { ApprovalRepository } from '../../modules/approvals/infrastructure/approval.repository.js';
 import { NoteRepository } from '../../modules/tools/infrastructure/note.repository.js';
 import { BuiltInToolExecutor } from '../../modules/tools/application/tool-executor.js';
@@ -38,6 +39,7 @@ export interface AppServices {
   workspaceService: WorkspaceService;
   agentService: AgentService;
   runService: RunService;
+  approvalService: ApprovalService;
   auditQueryService: AuditQueryService;
 }
 
@@ -64,6 +66,18 @@ export function buildAppServices(db: Database, env: Env): AppServices {
     new WorkspaceMembershipRepository(db),
   );
 
+  const runService = new RunService(
+    agentRepository,
+    agentVersionRepository,
+    new RunRepository(db),
+    new RunStepRepository(db),
+    approvalRepository,
+    buildModelRouter(env),
+    new BuiltInToolExecutor(new NoteRepository(db)),
+    authorizationService,
+    auditLog,
+  );
+
   return {
     authenticator,
     tenantContextResolver,
@@ -84,17 +98,8 @@ export function buildAppServices(db: Database, env: Env): AppServices {
       authorizationService,
       auditLog,
     ),
-    runService: new RunService(
-      agentRepository,
-      agentVersionRepository,
-      new RunRepository(db),
-      new RunStepRepository(db),
-      approvalRepository,
-      buildModelRouter(env),
-      new BuiltInToolExecutor(new NoteRepository(db)),
-      authorizationService,
-      auditLog,
-    ),
+    approvalService: new ApprovalService(approvalRepository, runService, agentRepository, memberships, authorizationService, auditLog),
+    runService,
     auditQueryService: new AuditQueryService(auditLog, authorizationService),
   };
 }
