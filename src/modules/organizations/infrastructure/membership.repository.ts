@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import type { Database } from '../../../infrastructure/database/client.js';
 import { memberships, type Membership, type NewMembership } from './schema.js';
-import type { MembershipPort } from '../application/membership.port.js';
+import type { MembershipPatch, MembershipPort } from '../application/membership.port.js';
 
 /**
  * All lookups require organizationId — membership rows are never resolved
@@ -28,6 +28,27 @@ export class MembershipRepository implements MembershipPort {
 
   async listByPrincipal(principalId: string): Promise<Membership[]> {
     return this.db.select().from(memberships).where(eq(memberships.principalId, principalId));
+  }
+
+  async findById(organizationId: string, membershipId: string): Promise<Membership | undefined> {
+    const [row] = await this.db
+      .select()
+      .from(memberships)
+      .where(and(eq(memberships.organizationId, organizationId), eq(memberships.id, membershipId)))
+      .limit(1);
+    return row;
+  }
+
+  async update(organizationId: string, membershipId: string, patch: MembershipPatch): Promise<Membership> {
+    const [row] = await this.db
+      .update(memberships)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(and(eq(memberships.organizationId, organizationId), eq(memberships.id, membershipId)))
+      .returning();
+    if (!row) {
+      throw new Error('Membership not found for update');
+    }
+    return row;
   }
 
   async create(input: NewMembership): Promise<Membership> {

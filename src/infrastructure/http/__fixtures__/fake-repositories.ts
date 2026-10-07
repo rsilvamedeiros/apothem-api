@@ -15,7 +15,7 @@ import type {
 } from '../../../modules/workspaces/infrastructure/schema.js';
 import type { PrincipalPort } from '../../../modules/identity/application/principal.port.js';
 import type { OrganizationPort } from '../../../modules/organizations/application/organization.port.js';
-import type { MembershipPort } from '../../../modules/organizations/application/membership.port.js';
+import type { MembershipPatch, MembershipPort } from '../../../modules/organizations/application/membership.port.js';
 import type { WorkspacePort } from '../../../modules/workspaces/application/workspace.port.js';
 import type { WorkspaceMembershipPort } from '../../../modules/workspaces/application/workspace-membership.port.js';
 import type { Agent, NewAgent, AgentDraft, NewAgentDraft, AgentVersion, NewAgentVersion } from '../../../modules/agents/infrastructure/schema.js';
@@ -46,6 +46,10 @@ export class FakePrincipalRepository implements PrincipalPort {
 
   async findByEmail(email: string): Promise<Principal | undefined> {
     return this.rows.find((row) => row.email === email);
+  }
+
+  async findManyByIds(principalIds: readonly string[]): Promise<Principal[]> {
+    return this.rows.filter((row) => principalIds.includes(row.id));
   }
 
   async create(input: NewPrincipal): Promise<Principal> {
@@ -104,6 +108,19 @@ export class FakeMembershipRepository implements MembershipPort {
 
   async listByPrincipal(principalId: string): Promise<Membership[]> {
     return this.rows.filter((row) => row.principalId === principalId);
+  }
+
+  async findById(organizationId: string, membershipId: string): Promise<Membership | undefined> {
+    return this.rows.find((row) => row.organizationId === organizationId && row.id === membershipId);
+  }
+
+  async update(organizationId: string, membershipId: string, patch: MembershipPatch): Promise<Membership> {
+    const row = await this.findById(organizationId, membershipId);
+    if (!row) {
+      throw new Error('Membership not found for update');
+    }
+    Object.assign(row, patch, { updatedAt: new Date() });
+    return row;
   }
 
   async create(input: NewMembership): Promise<Membership> {
