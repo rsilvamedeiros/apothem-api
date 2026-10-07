@@ -143,4 +143,33 @@ describe('API on real Postgres (integration)', () => {
     expect(new Set(ids).size).toBe(6);
     expect(second.body.nextCursor).toBeNull();
   });
+
+  it('manages members on the real schema: add, promote within limits, revoke, reactivate', async () => {
+    const t = await bootstrap('members');
+    const friend = await owner('members-friend');
+    const members = `/v1/organizations/${t.org.id}/members`;
+
+    const added = await call(t.principal.id, 'POST', members, { email: friend.email, role: 'builder' });
+    expect(added.status).toBe(201);
+    const membershipId = added.body.membershipId as string;
+
+    expect((await call(friend.id, 'GET', members)).status).toBe(200);
+    const promoted = await call(t.principal.id, 'PATCH', `${members}/${membershipId}`, { role: 'admin' });
+    expect(promoted.body.role).toBe('admin');
+
+    const revoked = await call(t.principal.id, 'POST', `${members}/${membershipId}/revoke`);
+    expect(revoked.body.status).toBe('revoked');
+    expect((await call(friend.id, 'GET', members)).status).toBe(403);
+
+    const again = await call(t.principal.id, 'POST', members, { email: friend.email, role: 'auditor' });
+    expect(again.status).toBe(201);
+    expect(again.body.membershipId).toBe(membershipId);
+    expect(again.body).toMatchObject({ role: 'auditor', status: 'active' });
+
+    const list = await call(t.principal.id, 'GET', members);
+    expect(list.body).toHaveLength(2);
+
+    const [self] = (list.body as { membershipId: string; principalId: string }[]).filter((m) => m.principalId === t.principal.id);
+    expect((await call(t.principal.id, 'PATCH', members + '/' + self!.membershipId, { role: 'admin' })).status).toBe(409);
+  });
 });
