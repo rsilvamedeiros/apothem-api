@@ -7,7 +7,9 @@ export default defineConfig({
     // Server-building suites import fastify/swagger on a cold cache, which can
     // exceed the 5s default and made `beforeEach` hooks fail intermittently.
     testTimeout: 30_000,
-    hookTimeout: 30_000,
+    // Integration suites boot an in-memory Postgres (WASM) in beforeAll; several start in parallel,
+    // which can take well over 30s on a loaded or cold machine.
+    hookTimeout: 120_000,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
