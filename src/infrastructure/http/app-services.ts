@@ -1,4 +1,4 @@
-import type { Database } from '../database/client.js';
+﻿import type { Database } from '../database/client.js';
 import { PrincipalRepository } from '../../modules/identity/infrastructure/principal.repository.js';
 import { ActivePrincipalReader } from '../../modules/identity/infrastructure/active-principal-reader.js';
 import { DevHeaderAuthenticator } from '../../modules/identity/infrastructure/dev-header-authenticator.js';
@@ -7,6 +7,7 @@ import { OrganizationRepository } from '../../modules/organizations/infrastructu
 import { WorkspaceRepository } from '../../modules/workspaces/infrastructure/workspace.repository.js';
 import { WorkspaceMembershipRepository } from '../../modules/workspaces/infrastructure/workspace-membership.repository.js';
 import { AuditLogRepository } from '../../modules/audit/infrastructure/audit-log.repository.js';
+import { AuditQueryService } from '../../modules/audit/application/audit-query.service.js';
 import { TenantContextResolver } from '../../modules/authorization/application/tenant-context-resolver.js';
 import { AuthorizationService } from '../../modules/authorization/application/authorization.service.js';
 import { OrganizationService } from '../../modules/organizations/application/organization.service.js';
@@ -24,11 +25,12 @@ export interface AppServices {
   organizationService: OrganizationService;
   workspaceService: WorkspaceService;
   agentService: AgentService;
+  auditQueryService: AuditQueryService;
 }
 
 /**
  * Composition root for request-scoped services. `authenticator` is the
- * DevHeaderAuthenticator bootstrap adapter (see identity/infrastructure) —
+ * DevHeaderAuthenticator bootstrap adapter (see identity/infrastructure) â€”
  * swap this for a real OIDC-backed AuthenticationPort implementation without
  * touching callers, since they only depend on the AuthenticationPort type.
  */
@@ -64,5 +66,6 @@ export function buildAppServices(db: Database): AppServices {
       authorizationService,
       auditLog,
     ),
+    auditQueryService: new AuditQueryService(auditLog, authorizationService),
   };
 }

@@ -1,4 +1,4 @@
-import Fastify, { type FastifyInstance } from 'fastify';
+﻿import Fastify, { type FastifyInstance } from 'fastify';
 import swagger from '@fastify/swagger';
 import { sql } from 'drizzle-orm';
 import type { Env } from './env.js';
@@ -8,13 +8,14 @@ import { errorHandler } from './error-handler.js';
 import { organizationRoutes } from '../../modules/organizations/presentation/http/organizations.routes.js';
 import { workspaceRoutes } from '../../modules/workspaces/presentation/http/workspaces.routes.js';
 import { agentRoutes } from '../../modules/agents/presentation/http/agents.routes.js';
+import { auditRoutes } from '../../modules/audit/presentation/http/audit.routes.js';
 
 /**
  * Transport wiring only. Route handlers must delegate to module
- * application services — no business logic here.
+ * application services â€” no business logic here.
  *
  * `services` is injectable so tests can exercise real route/middleware
- * wiring against fake application services without a database — see
+ * wiring against fake application services without a database â€” see
  * organizations.routes.test.ts. Production boot (main/index.ts) always lets
  * it default to the Drizzle-backed services built from `db`.
  */
@@ -23,7 +24,7 @@ export async function buildServer(env: Env, db: Database, services?: AppServices
     logger: {
       enabled: env.NODE_ENV !== 'test',
       // Correlation id (request.id) is included by Fastify's default request
-      // log serializer; redact anything that could carry a credential — see
+      // log serializer; redact anything that could carry a credential â€” see
       // observability-logging-tracing.md ("minimizing sensitive content").
       redact: {
         paths: ['req.headers.authorization', 'req.headers["x-principal-id"]'],
@@ -77,10 +78,11 @@ export async function buildServer(env: Env, db: Database, services?: AppServices
   await app.register(organizationRoutes, { services: resolvedServices });
   await app.register(workspaceRoutes, { services: resolvedServices });
   await app.register(agentRoutes, { services: resolvedServices });
+  await app.register(auditRoutes, { services: resolvedServices });
 
   if (env.NODE_ENV === 'production') {
     app.log.warn(
-      'AuthenticationPort is still the DevHeaderAuthenticator bootstrap adapter — replace with self-hosted OIDC before real production use (ADR-009).',
+      'AuthenticationPort is still the DevHeaderAuthenticator bootstrap adapter â€” replace with self-hosted OIDC before real production use (ADR-009).',
     );
   }
 

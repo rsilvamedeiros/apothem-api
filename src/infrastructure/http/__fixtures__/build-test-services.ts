@@ -1,9 +1,10 @@
-import { DevHeaderAuthenticator } from '../../../modules/identity/infrastructure/dev-header-authenticator.js';
+﻿import { DevHeaderAuthenticator } from '../../../modules/identity/infrastructure/dev-header-authenticator.js';
 import { ActivePrincipalReader } from '../../../modules/identity/infrastructure/active-principal-reader.js';
 import { TenantContextResolver } from '../../../modules/authorization/application/tenant-context-resolver.js';
 import { AuthorizationService } from '../../../modules/authorization/application/authorization.service.js';
 import { OrganizationService } from '../../../modules/organizations/application/organization.service.js';
 import { WorkspaceService } from '../../../modules/workspaces/application/workspace.service.js';
+import { AuditQueryService } from '../../../modules/audit/application/audit-query.service.js';
 import { AgentService } from '../../../modules/agents/application/agent.service.js';
 import type { AppServices } from '../app-services.js';
 import {
@@ -47,6 +48,7 @@ export function buildTestServices(): TestServices {
       authorizationService,
       audit,
     ),
+    auditQueryService: new AuditQueryService(audit, authorizationService),
   };
 
   return { services, principals, audit };

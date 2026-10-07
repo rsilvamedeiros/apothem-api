@@ -292,13 +292,7 @@ export class FakeAgentVersionRepository implements AgentVersionPort {
   }
 }
 
-export class FakeAuditLog implements AuditPort {
-  readonly events: AuditEvent[] = [];
 
-  async record(event: AuditEvent): Promise<void> {
-    this.events.push(event);
-  }
-}
 
 /** In-memory audit store: implements the read port and records every query for assertions. */
 export class FakeAuditReader implements AuditReaderPort {
@@ -324,5 +318,25 @@ export class FakeAuditReader implements AuditReaderPort {
         return time < afterTime || (time === afterTime && row.id < page.after.id);
       })
       .slice(0, page.limit);
+  }
+}
+
+/** Audit log fake: records events (assertable via events) and serves them through the read port. */
+export class FakeAuditLog extends FakeAuditReader implements AuditPort {
+  readonly events: AuditEvent[] = [];
+
+  async record(event: AuditEvent): Promise<void> {
+    this.events.push(event);
+    this.add({
+      id: crypto.randomUUID(),
+      organizationId: event.organizationId,
+      workspaceId: event.workspaceId ?? null,
+      actorPrincipalId: event.actorPrincipalId,
+      action: event.action,
+      targetType: event.targetType,
+      targetId: event.targetId,
+      metadata: event.metadata ?? null,
+      createdAt: new Date(),
+    });
   }
 }
