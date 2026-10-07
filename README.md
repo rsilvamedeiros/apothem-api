@@ -69,7 +69,7 @@ apothem-api/
 ├── docs/                        backend-specific operational notes only
 ├── infra/
 │   ├── docker/                  local Docker Compose (Postgres+pgvector, Redis, MinIO)
-│   ├── fly/                     Fly.io deploy config (see ADR-009)
+│   ├── render/                  Render deploy config (see ADR-010)
 │   └── scripts/                  operational scripts
 ├── CLAUDE.md
 ├── AGENTS.md
@@ -92,13 +92,13 @@ Per `apothem-ai/docs/adr/009-zero-cost-initial-stack.md` — a **zero fixed-cost
 |---|---|
 | Language/runtime | Node.js + TypeScript |
 | Architecture style | Modular monolith (ADR-002) |
-| Database | PostgreSQL + pgvector (ADR-003) — Docker Compose locally, Neon/Supabase free tier remotely |
+| Database | PostgreSQL + pgvector (ADR-003) — Docker Compose locally, Supabase remotely (ADR-010) |
 | ORM / query layer | Drizzle |
 | Authentication | Self-hosted OIDC (Auth.js/NextAuth or Lucia) — no managed auth vendor yet |
 | Queue | Redis + BullMQ — Docker Compose locally, Upstash free tier remotely |
 | Object storage | S3-compatible — MinIO locally, Cloudflare R2 free tier remotely |
 | AI providers | OpenAI / Anthropic / Google, accessed only through the internal Model Gateway (ADR-004) — never a provider SDK directly in domain code |
-| Backend hosting | Fly.io free allowance |
+| Backend hosting | Render (ADR-010) |
 | Frontend hosting (sibling repo) | Vercel free tier |
 | Observability | Structured logs + OpenTelemetry instrumentation; no paid vendor yet |
 | API contracts | OpenAPI spec published from this repo; `apothem-ai/packages/api-client` is generated from it — no hand-duplicated types |
@@ -151,4 +151,4 @@ See `apothem-ai/docs/17-roadmap/first-implementation-sequence.md` for the rest o
 <a id="adr-008"></a>
 ### Why two repositories
 
-The backend has materially different operational requirements than the frontend (long-running AI tasks, background workers, queues, ingestion, secrets, audit trails) and independent deploy cadence (Fly.io here vs. Vercel for the frontend) outweighs the contract-sharing convenience of a single repo. Full rationale: `apothem-ai/docs/adr/008-two-repository-split.md`.
+The backend has materially different operational requirements than the frontend (long-running AI tasks, background workers, queues, ingestion, secrets, audit trails) and independent deploy cadence (Render here vs. Vercel for the frontend) outweighs the contract-sharing convenience of a single repo. Full rationale: `apothem-ai/docs/adr/008-two-repository-split.md`.

@@ -35,7 +35,7 @@ If the requested implementation conflicts with documentation, **do not silently 
 
 ## Stack baseline (do not silently change)
 
-Per ADR-009 (`apothem-ai/docs/adr/009-zero-cost-initial-stack.md`): Node.js + TypeScript, PostgreSQL + pgvector, Drizzle ORM, self-hosted OIDC auth, Redis + BullMQ, S3-compatible storage (MinIO/R2), Fly.io hosting. This is a pre-revenue, cost-constrained baseline — treat it as current architecture law, not a suggestion, until a new ADR supersedes it.
+Per ADR-009 (`apothem-ai/docs/adr/009-zero-cost-initial-stack.md`): Node.js + TypeScript, PostgreSQL + pgvector, Drizzle ORM, self-hosted OIDC auth, Redis + BullMQ, S3-compatible storage (MinIO/R2), Render hosting, Supabase Postgres (ADR-010). This is a pre-revenue, cost-constrained baseline — treat it as current architecture law, not a suggestion, until a new ADR supersedes it.
 
 ## Coding direction for the scaffold
 
@@ -74,7 +74,25 @@ Do not test AI features only by "trying the chat". AI behavior requires determin
 
 ## Version control
 
-Never run `git commit` (or `git push`) in this repository unless explicitly asked to in that exact turn. The user always reviews the diff manually and commits it themselves. When work is ready, provide a suggested commit message (English) instead of committing.
+- Claude Code may commit automatically; the user does not approve each commit. Commit in small, logical units, one concern per commit.
+- Commit messages: Conventional Commits (`feat`, `fix`, `docs`, `test`, `refactor`, `chore`, `ci`, `build`, `perf`), English, imperative, a single concise subject line, optional scope. No body, no footers, no `Co-Authored-By`, no author tags.
+- Never `git push`, force-push, rewrite history or skip hooks unless explicitly asked.
+- Work module by module: after each module, send the user a short preview (what changed, tests run, commits made) and wait for `next`, `ok` or `proceed` before starting the next module.
+
+## Engineering practices
+
+- TDD: write the failing test first, make it pass, then refactor. Bug fixes start with a regression test.
+- Responsible AI by default: human approval for risky actions (ADR-007), no PII or secrets in prompts/logs/fixtures, eval datasets for AI behavior, mock Model Gateway in tests/CI, documented guardrails and failure behavior for every agent/tool.
+- Tests must cover denied paths and tenant isolation, not only happy paths.
+- Documentation changes ship with the code that motivates them.
+
+## Cross-repo flow (`apothem-api` <-> `apothem-ai`)
+
+Modules advance in lockstep: backend contract first, then frontend. For each module: (1) tests + implementation here, (2) regenerate `openapi/openapi.json`, (3) in `apothem-ai` run `npm run sync-and-generate --workspace=packages/api-client` and build the UI against the generated client, (4) record parity in the module docs. Never merge a contract change here without noting the frontend follow-up.
+
+## Hosting
+
+Render (API), Supabase (remote Postgres only, no Supabase Auth/Data API), Vercel (frontend) per ADR-010. Local and CI use Docker Compose Postgres.
 
 ## Definition of done
 
