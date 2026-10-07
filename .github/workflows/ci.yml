@@ -18,8 +18,16 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
-      - run: npm run test
+      - run: npm run test:coverage
       - run: npm run build
+      # Fails if the committed OpenAPI spec is stale: apothem-ai vendors this
+      # file, so it must always match the routes.
+      - run: cp .env.example .env && npm run openapi:generate
+      - run: |
+          if ! git diff --exit-code openapi/; then
+            echo "OpenAPI spec is out of date — run 'npm run openapi:generate' and commit the result."
+            exit 1
+          fi
       # Fails only when the sibling apothem-ai checkout is present (see
       # infra/scripts/check-doc-links.ts) — a no-op here since apothem-api is
       # checked out standalone, kept for local/dev-machine use.
@@ -86,3 +94,14 @@ jobs:
       # Baseline: fail on high/critical. Known moderate findings are dev-only
       # tooling (drizzle-kit's bundled esbuild) with no upstream fix yet.
       - run: npm audit --audit-level=high
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
