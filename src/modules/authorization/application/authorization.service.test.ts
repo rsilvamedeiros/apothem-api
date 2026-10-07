@@ -85,3 +85,15 @@ describe('AuthorizationService — workspace role scope', () => {
     expect(service.can(context, 'agent.publish')).toBe(false);
   });
 });
+
+describe('AuthorizationService — forged role names', () => {
+  const service = new AuthorizationService();
+
+  it.each(['toString', 'constructor', '__proto__', 'hasOwnProperty'])(
+    'denies instead of throwing for the inherited-property role "%s"',
+    (role) => {
+      const context = { ...contextWithRole('owner'), organizationRole: role } as unknown as TenantContext;
+      expect(service.can(context, 'agent.read')).toBe(false);
+    },
+  );
+});

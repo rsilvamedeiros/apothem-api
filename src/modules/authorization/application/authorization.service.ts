@@ -13,9 +13,12 @@ export class AuthorizationService {
     const effectiveRole = isOrganizationScoped(capability)
       ? context.organizationRole
       : (context.workspaceRole ?? context.organizationRole);
-    const capabilities = ROLE_CAPABILITIES[effectiveRole];
     // Unknown/unmapped role fails closed rather than defaulting to allow.
-    return capabilities?.has(capability) ?? false;
+    // hasOwn guards against inherited keys such as "toString" or "__proto__".
+    if (!Object.hasOwn(ROLE_CAPABILITIES, effectiveRole)) {
+      return false;
+    }
+    return ROLE_CAPABILITIES[effectiveRole].has(capability);
   }
 
   assert(context: TenantContext, capability: Capability): void {
