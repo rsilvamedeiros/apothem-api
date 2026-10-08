@@ -30,6 +30,9 @@ export default defineConfig({
         'src/modules/runs/application/**': { lines: 88, functions: 88, branches: 82, statements: 88 },
         'src/modules/models/application/**': { lines: 90, functions: 85, branches: 80, statements: 85 },
         'src/modules/agents/application/**': { lines: 90, functions: 85, branches: 80, statements: 85 },
+        // Knowledge decides what text may reach a model, so its logic is held to a high floor.
+        'src/modules/knowledge/application/**': { lines: 95, functions: 95, branches: 90, statements: 95 },
+        'src/modules/knowledge/domain/**': { lines: 95, functions: 95, branches: 88, statements: 95 },
       },
     },
   },
