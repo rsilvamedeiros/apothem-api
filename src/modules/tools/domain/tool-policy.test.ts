@@ -54,3 +54,68 @@ describe('tool policy', () => {
     expect(evaluateToolPolicy({ risk: 'read_only', binding: { approval: 'sometimes' as never } }).outcome).toBe('require_approval');
   });
 });
+
+describe('workspace tool rules (ADR-015)', () => {
+  const bound = { approval: 'auto' } as const;
+
+  it('blocks a bound tool whatever its risk or binding', () => {
+    for (const risk of TOOL_RISKS) {
+      for (const approval of ['auto', 'required'] as const) {
+        expect(evaluateToolPolicy({ risk, binding: { approval }, workspaceRule: 'blocked' })).toEqual({
+          outcome: 'deny',
+          reason: 'TOOL_BLOCKED_BY_POLICY',
+        });
+      }
+    }
+  });
+
+  it('reports an unbound tool as not bound, even when it is also blocked', () => {
+    expect(evaluateToolPolicy({ risk: 'read_only', binding: undefined, workspaceRule: 'blocked' })).toEqual({
+      outcome: 'deny',
+      reason: 'TOOL_NOT_BOUND',
+    });
+  });
+
+  it('makes a tool ask first when the workspace says so, even a read-only one the binding sets to auto', () => {
+    for (const risk of TOOL_RISKS) {
+      expect(evaluateToolPolicy({ risk, binding: bound, workspaceRule: 'approval_required' }).outcome).toBe('require_approval');
+    }
+  });
+
+  it('leaves the decision untouched when there is no rule', () => {
+    expect(evaluateToolPolicy({ risk: 'read_only', binding: bound, workspaceRule: undefined })).toEqual({ outcome: 'allow' });
+    expect(evaluateToolPolicy({ risk: 'read_only', binding: bound })).toEqual({ outcome: 'allow' });
+  });
+
+  it('fails closed for a rule it does not know', () => {
+    expect(evaluateToolPolicy({ risk: 'read_only', binding: bound, workspaceRule: 'allow_everything' as never })).toEqual({
+      outcome: 'deny',
+      reason: 'TOOL_BLOCKED_BY_POLICY',
+    });
+  });
+
+  it('never makes a decision more permissive than without the rule (property)', () => {
+    const strictness = { allow: 0, require_approval: 1, deny: 2 } as const;
+    fc.assert(
+      fc.property(
+        riskArb,
+        fc.option(approvalArb, { nil: undefined }),
+        fc.option(fc.constantFrom('blocked', 'approval_required'), { nil: undefined }),
+        (risk, approval, workspaceRule) => {
+          const binding = approval ? { approval } : undefined;
+          const without = evaluateToolPolicy({ risk, binding });
+          const withRule = evaluateToolPolicy({ risk, binding, workspaceRule });
+          expect(strictness[withRule.outcome]).toBeGreaterThanOrEqual(strictness[without.outcome]);
+        },
+      ),
+    );
+  });
+
+  it('never lets a blocked tool through for any input (property)', () => {
+    fc.assert(
+      fc.property(riskArb, approvalArb, (risk, approval) => {
+        expect(evaluateToolPolicy({ risk, binding: { approval }, workspaceRule: 'blocked' }).outcome).toBe('deny');
+      }),
+    );
+  });
+});
