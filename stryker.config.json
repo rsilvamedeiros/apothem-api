@@ -17,6 +17,7 @@
     "src/modules/knowledge/application/knowledge.service.ts",
     "src/modules/knowledge/application/knowledge-retriever.ts",
     "src/modules/tools/application/tool-executor.ts",
+    "src/modules/tools/application/tool-policy.service.ts",
     "src/modules/runs/domain/*.ts",
     "src/modules/agents/domain/*.ts",
     "src/common/keyset-cursor.ts",
