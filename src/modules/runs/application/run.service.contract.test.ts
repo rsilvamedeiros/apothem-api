@@ -171,7 +171,7 @@ describe('RunService contract details', () => {
       const { run } = await kit.runService.start(builder, agent.id, { input: 'hi' });
 
       expect(execute).toHaveBeenCalledWith(
-        { organizationId: ORG, workspaceId: WORKSPACE, principalId: builder.principal.id, runId: run.id },
+        { organizationId: ORG, workspaceId: WORKSPACE, principalId: builder.principal.id, runId: run.id, knowledgeBaseIds: [] },
         'get_current_time',
         {},
         `${run.id}:2`,

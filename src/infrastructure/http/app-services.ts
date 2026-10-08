@@ -26,6 +26,11 @@ import { ApprovalService } from '../../modules/approvals/application/approval.se
 import { ApprovalRepository } from '../../modules/approvals/infrastructure/approval.repository.js';
 import { NoteRepository } from '../../modules/tools/infrastructure/note.repository.js';
 import { BuiltInToolExecutor } from '../../modules/tools/application/tool-executor.js';
+import { KnowledgeBaseRepository } from '../../modules/knowledge/infrastructure/knowledge-base.repository.js';
+import { KnowledgeDocumentRepository } from '../../modules/knowledge/infrastructure/knowledge-document.repository.js';
+import { KnowledgeSearchRepository } from '../../modules/knowledge/infrastructure/knowledge-search.repository.js';
+import { KnowledgeRetriever } from '../../modules/knowledge/application/knowledge-retriever.js';
+import { KnowledgeService } from '../../modules/knowledge/application/knowledge.service.js';
 import { buildModelRouter } from '../ai/model-registry.js';
 import type { AuthenticationPort } from '../../modules/identity/application/authentication.port.js';
 
@@ -40,6 +45,7 @@ export interface AppServices {
   agentService: AgentService;
   runService: RunService;
   approvalService: ApprovalService;
+  knowledgeService: KnowledgeService;
   auditQueryService: AuditQueryService;
 }
 
@@ -58,6 +64,9 @@ export function buildAppServices(db: Database, env: Env): AppServices {
   const approvalRepository = new ApprovalRepository(db);
   const agentVersionRepository = new AgentVersionRepository(db);
   const authorizationService = new AuthorizationService();
+  const knowledgeBases = new KnowledgeBaseRepository(db);
+  const knowledgeDocuments = new KnowledgeDocumentRepository(db);
+  const knowledgeRetriever = new KnowledgeRetriever(new KnowledgeSearchRepository(db));
 
   const authenticator = buildAuthenticator(env, new ActivePrincipalReader(principals), new PrincipalProvisioner(principals));
   const tenantContextResolver = new TenantContextResolver(
@@ -73,7 +82,7 @@ export function buildAppServices(db: Database, env: Env): AppServices {
     new RunStepRepository(db),
     approvalRepository,
     buildModelRouter(env),
-    new BuiltInToolExecutor(new NoteRepository(db)),
+    new BuiltInToolExecutor(new NoteRepository(db), () => new Date(), knowledgeRetriever),
     authorizationService,
     auditLog,
   );
@@ -100,6 +109,7 @@ export function buildAppServices(db: Database, env: Env): AppServices {
     ),
     approvalService: new ApprovalService(approvalRepository, runService, agentRepository, memberships, authorizationService, auditLog),
     runService,
+    knowledgeService: new KnowledgeService(knowledgeBases, knowledgeDocuments, knowledgeRetriever, authorizationService, auditLog),
     auditQueryService: new AuditQueryService(auditLog, authorizationService),
   };
 }

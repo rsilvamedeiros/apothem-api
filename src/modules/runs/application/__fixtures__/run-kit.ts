@@ -18,6 +18,13 @@ import {
 } from '../../../../infrastructure/http/__fixtures__/fake-repositories.js';
 import { RunService } from '../run.service.js';
 import { ApprovalService } from '../../../approvals/application/approval.service.js';
+import { KnowledgeRetriever } from '../../../knowledge/application/knowledge-retriever.js';
+import { KnowledgeService } from '../../../knowledge/application/knowledge.service.js';
+import {
+  FakeKnowledgeBaseRepository,
+  FakeKnowledgeDocumentRepository,
+  FakeKnowledgeSearch,
+} from '../../../knowledge/application/__fixtures__/fake-knowledge-repositories.js';
 
 export const ORG = '11111111-1111-4111-8111-111111111111';
 export const WORKSPACE = '22222222-2222-4222-8222-222222222222';
@@ -92,18 +99,23 @@ export function buildRunKit(options: RunKitOptions = {}) {
   const approvals = new FakeApprovalRepository();
   const notes = new FakeNoteRepository();
   const memberships = new FakeMembershipRepository();
+  const knowledgeBases = new FakeKnowledgeBaseRepository();
+  const knowledgeDocuments = new FakeKnowledgeDocumentRepository();
+  const knowledgeSearch = new FakeKnowledgeSearch(knowledgeBases, knowledgeDocuments);
+  const knowledgeRetriever = new KnowledgeRetriever(knowledgeSearch);
   const audit = new FakeAuditLog();
   const gateway = new ScriptedGateway();
   const authorization = new AuthorizationService();
   const clock = { current: new Date('2026-03-04T12:00:00.000Z') };
   const now = options.now ?? (() => new Date(clock.current));
-  const executor = options.executor ?? new BuiltInToolExecutor(notes, now);
+  const executor = options.executor ?? new BuiltInToolExecutor(notes, now, knowledgeRetriever);
   const agentService = new AgentService(agents, drafts, versions, authorization, audit);
   const runService = new RunService(agents, versions, runs, steps, approvals, gateway, executor, authorization, audit, now, {
     ...(options.approvalTtlMs ? { approvalTtlMs: options.approvalTtlMs } : {}),
   });
 
   const approvalService = new ApprovalService(approvals, runService, agents, memberships, authorization, audit, now);
+  const knowledgeService = new KnowledgeService(knowledgeBases, knowledgeDocuments, knowledgeRetriever, authorization, audit, now);
 
   /** Seeds an active organization membership so separation-of-duties rules can see who else could approve. */
   async function addMember(role: OrganizationRole, principalSuffix: string, status: 'active' | 'invited' | 'revoked' = 'active') {
@@ -111,7 +123,14 @@ export function buildRunKit(options: RunKitOptions = {}) {
   }
 
   async function publishedAgent(
-    config: { instructions?: string; modelPolicy?: object; guardrails?: object; toolBindings?: object[]; workspaceId?: string } = {},
+    config: {
+      instructions?: string;
+      modelPolicy?: object;
+      guardrails?: object;
+      toolBindings?: object[];
+      knowledgeBindings?: object[];
+      workspaceId?: string;
+    } = {},
   ) {
     const ctx = contextFor('admin', 'kit-admin', config.workspaceId ?? WORKSPACE);
     const { agent } = await agentService.create(ctx, { name: 'Support', slug: `support-${crypto.randomUUID().slice(0, 8)}` });
@@ -120,6 +139,7 @@ export function buildRunKit(options: RunKitOptions = {}) {
       ...(config.modelPolicy ? { modelPolicy: config.modelPolicy } : {}),
       ...(config.guardrails ? { guardrails: config.guardrails } : {}),
       ...(config.toolBindings ? { toolBindings: config.toolBindings } : {}),
+      ...(config.knowledgeBindings ? { knowledgeBindings: config.knowledgeBindings } : {}),
     });
     const version = await agentService.publish(ctx, agent.id);
     return { agent, version };
@@ -128,5 +148,6 @@ export function buildRunKit(options: RunKitOptions = {}) {
   return {
     agents, drafts, versions, runs, steps, approvals, notes, memberships, audit, gateway, authorization,
     agentService, runService, approvalService, executor, clock, now, publishedAgent, addMember,
+    knowledgeBases, knowledgeDocuments, knowledgeSearch, knowledgeService,
   };
 }

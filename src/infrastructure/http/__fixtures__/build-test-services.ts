@@ -13,6 +13,13 @@ import { RunService } from '../../../modules/runs/application/run.service.js';
 import { ModelRouter } from '../../../modules/models/application/model-router.js';
 import { MockModelAdapter } from '../../ai/mock-model.adapter.js';
 import { AgentService } from '../../../modules/agents/application/agent.service.js';
+import { KnowledgeRetriever } from '../../../modules/knowledge/application/knowledge-retriever.js';
+import { KnowledgeService } from '../../../modules/knowledge/application/knowledge.service.js';
+import {
+  FakeKnowledgeBaseRepository,
+  FakeKnowledgeDocumentRepository,
+  FakeKnowledgeSearch,
+} from '../../../modules/knowledge/application/__fixtures__/fake-knowledge-repositories.js';
 import type { AppServices } from '../app-services.js';
 import {
   FakeAgentDraftRepository,
@@ -50,6 +57,9 @@ export function buildTestServices(): TestServices {
   const mock = new MockModelAdapter();
   const approvals = new FakeApprovalRepository();
   const notes = new FakeNoteRepository();
+  const knowledgeBases = new FakeKnowledgeBaseRepository();
+  const knowledgeDocuments = new FakeKnowledgeDocumentRepository();
+  const knowledgeRetriever = new KnowledgeRetriever(new FakeKnowledgeSearch(knowledgeBases, knowledgeDocuments));
 
   const runService = new RunService(
     agentRepository,
@@ -66,7 +76,7 @@ export function buildTestServices(): TestServices {
         pricing: { inputUsdPerMillionTokens: 0, outputUsdPerMillionTokens: 0 },
       },
     ]),
-    new BuiltInToolExecutor(notes),
+    new BuiltInToolExecutor(notes, () => new Date(), knowledgeRetriever),
     authorizationService,
     audit,
   );
@@ -81,6 +91,7 @@ export function buildTestServices(): TestServices {
     workspaceService: new WorkspaceService(workspaces, authorizationService, audit),
     agentService: new AgentService(agentRepository, new FakeAgentDraftRepository(), agentVersionRepository, authorizationService, audit),
     runService,
+    knowledgeService: new KnowledgeService(knowledgeBases, knowledgeDocuments, knowledgeRetriever, authorizationService, audit),
     approvalService: new ApprovalService(approvals, runService, agentRepository, memberships, authorizationService, audit),
     auditQueryService: new AuditQueryService(audit, authorizationService),
   };

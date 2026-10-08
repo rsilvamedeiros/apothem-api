@@ -165,6 +165,29 @@ describe('AgentService', () => {
       await expect(service.publish(admin, agent.id)).rejects.toThrow(/Invalid tool bindings/);
     });
 
+    it('rejects knowledge bindings that break the contract, without echoing the value', async () => {
+      const { agent } = await service.create(builder, { name: 'A', slug: 'a' });
+      await service.updateDraft(builder, agent.id, { instructions: 'x', knowledgeBindings: [{ knowledgeBaseId: 'every-base' }] });
+      const error = await service.publish(admin, agent.id).catch((e: Error) => e);
+      expect(error).toBeInstanceOf(InvalidInputError);
+      expect((error as Error).message).toMatch(/Invalid knowledge bindings/);
+      expect((error as Error).message).not.toContain('every-base');
+
+      const id = '11111111-1111-4111-8111-111111111111';
+      await service.updateDraft(builder, agent.id, { knowledgeBindings: [{ knowledgeBaseId: id }, { knowledgeBaseId: id }] });
+      await expect(service.publish(admin, agent.id)).rejects.toThrow(/duplicate knowledge base/);
+      expect(await versions.findLatestVersionNumber(agent.id)).toBe(0);
+    });
+
+    it('publishes a draft whose knowledge bindings are valid', async () => {
+      const { agent } = await service.create(builder, { name: 'A', slug: 'a' });
+      await service.updateDraft(builder, agent.id, {
+        instructions: 'x',
+        knowledgeBindings: [{ knowledgeBaseId: '11111111-1111-4111-8111-111111111111' }],
+      });
+      await expect(service.publish(admin, agent.id)).resolves.toMatchObject({ versionNumber: 1 });
+    });
+
     it('publishes a draft whose tool bindings are valid', async () => {
       const { agent } = await service.create(builder, { name: 'A', slug: 'a' });
       await service.updateDraft(builder, agent.id, {

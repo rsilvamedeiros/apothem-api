@@ -12,6 +12,7 @@ import type { GenerateResult, ModelGatewayPort, ModelMessage } from '../../model
 import type { ModelPolicy } from '../../models/domain/model-policy.js';
 import { MAX_TOOL_RESULT_LENGTH, type ToolExecutorPort } from '../../tools/application/tool-executor.js';
 import { getToolDefinition, toModelTool } from '../../tools/domain/tool-catalog.js';
+import { parseKnowledgeBindings } from '../../knowledge/domain/knowledge-bindings.js';
 import { parseToolBindings, type ToolBinding } from '../../tools/domain/tool-bindings.js';
 import { evaluateToolPolicy } from '../../tools/domain/tool-policy.js';
 import { decodeKeysetCursor, encodeKeysetCursor } from '../../../common/keyset-cursor.js';
@@ -137,13 +138,23 @@ interface RunSetup {
   policy: ModelPolicy;
   limits: RunLimits;
   bindings: ToolBinding[];
+  /** The only knowledge bases this run may read, taken from the pinned version (ADR-014). */
+  knowledgeBaseIds: string[];
 }
 
 function parseSetup(version: AgentVersion): RunSetup | undefined {
   const policy = parseModelPolicy(version.modelPolicy);
   const limits = parseGuardrails(version.guardrails);
   const bindings = parseToolBindings(version.toolBindings);
-  return policy.ok && limits.ok && bindings.ok ? { instructions: version.instructions, policy: policy.value, limits: limits.value, bindings: bindings.value }
+  const knowledge = parseKnowledgeBindings(version.knowledgeBindings);
+  return policy.ok && limits.ok && bindings.ok && knowledge.ok
+    ? {
+        instructions: version.instructions,
+        policy: policy.value,
+        limits: limits.value,
+        bindings: bindings.value,
+        knowledgeBaseIds: knowledge.value.map((binding) => binding.knowledgeBaseId),
+      }
     : undefined;
 }
 
@@ -269,6 +280,7 @@ export class RunService {
         // Attributed to the person who started the run, never to the approver or the model.
         principalId: run.requestedByPrincipalId,
         runId: run.id,
+        knowledgeBaseIds: setup.knowledgeBaseIds,
       },
       approval.toolName,
       approval.arguments as Record<string, unknown>,
@@ -412,6 +424,7 @@ export class RunService {
           workspaceId: run.workspaceId,
           principalId: run.requestedByPrincipalId,
           runId: run.id,
+          knowledgeBaseIds: setup.knowledgeBaseIds,
         },
         definition.name,
         parsedArguments.data,

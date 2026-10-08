@@ -6,6 +6,7 @@ import { ConflictError, ForbiddenError, InvalidInputError, NotFoundError } from 
 import { canonicalJson } from './canonical-json.js';
 import { parseGuardrails, parseModelPolicy } from '../domain/agent-config.js';
 import { parseToolBindings } from '../../tools/domain/tool-bindings.js';
+import { parseKnowledgeBindings } from '../../knowledge/domain/knowledge-bindings.js';
 import type { AgentPort } from './agent.port.js';
 import type { AgentDraftPatch, AgentDraftPort } from './agent-draft.port.js';
 import type { AgentVersionPort } from './agent-version.port.js';
@@ -161,6 +162,10 @@ export class AgentService {
     const toolBindings = parseToolBindings(draft.toolBindings);
     if (!toolBindings.ok) {
       throw new InvalidInputError(`Invalid tool bindings: ${toolBindings.issues.join('; ')}`);
+    }
+    const knowledgeBindings = parseKnowledgeBindings(draft.knowledgeBindings);
+    if (!knowledgeBindings.ok) {
+      throw new InvalidInputError(`Invalid knowledge bindings: ${knowledgeBindings.issues.join('; ')}`);
     }
 
     const snapshot = {
