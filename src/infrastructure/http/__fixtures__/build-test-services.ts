@@ -20,6 +20,8 @@ import {
   FakeKnowledgeDocumentRepository,
   FakeKnowledgeSearch,
 } from '../../../modules/knowledge/application/__fixtures__/fake-knowledge-repositories.js';
+import { ToolPolicyService } from '../../../modules/tools/application/tool-policy.service.js';
+import { FakeToolPolicyRepository } from '../../../modules/tools/application/__fixtures__/fake-tool-policy-repository.js';
 import type { AppServices } from '../app-services.js';
 import {
   FakeAgentDraftRepository,
@@ -57,6 +59,7 @@ export function buildTestServices(): TestServices {
   const mock = new MockModelAdapter();
   const approvals = new FakeApprovalRepository();
   const notes = new FakeNoteRepository();
+  const toolPolicies = new FakeToolPolicyRepository();
   const knowledgeBases = new FakeKnowledgeBaseRepository();
   const knowledgeDocuments = new FakeKnowledgeDocumentRepository();
   const knowledgeRetriever = new KnowledgeRetriever(new FakeKnowledgeSearch(knowledgeBases, knowledgeDocuments));
@@ -79,6 +82,8 @@ export function buildTestServices(): TestServices {
     new BuiltInToolExecutor(notes, () => new Date(), knowledgeRetriever),
     authorizationService,
     audit,
+    () => new Date(),
+    { toolPolicies },
   );
 
   const services: AppServices = {
@@ -92,6 +97,7 @@ export function buildTestServices(): TestServices {
     agentService: new AgentService(agentRepository, new FakeAgentDraftRepository(), agentVersionRepository, authorizationService, audit),
     runService,
     knowledgeService: new KnowledgeService(knowledgeBases, knowledgeDocuments, knowledgeRetriever, authorizationService, audit),
+    toolPolicyService: new ToolPolicyService(toolPolicies, authorizationService, audit),
     approvalService: new ApprovalService(approvals, runService, agentRepository, memberships, authorizationService, audit),
     auditQueryService: new AuditQueryService(audit, authorizationService),
   };

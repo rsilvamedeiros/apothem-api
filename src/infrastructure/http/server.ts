@@ -14,6 +14,7 @@ import { agentRoutes } from '../../modules/agents/presentation/http/agents.route
 import { approvalRoutes } from '../../modules/approvals/presentation/http/approvals.routes.js';
 import { knowledgeRoutes } from '../../modules/knowledge/presentation/http/knowledge.routes.js';
 import { toolRoutes } from '../../modules/tools/presentation/http/tools.routes.js';
+import { toolPolicyRoutes } from '../../modules/tools/presentation/http/tool-policies.routes.js';
 import { runRoutes } from '../../modules/runs/presentation/http/runs.routes.js';
 import { auditRoutes } from '../../modules/audit/presentation/http/audit.routes.js';
 
@@ -89,6 +90,7 @@ export async function buildServer(env: Env, db: Database, services?: AppServices
   await app.register(workspaceRoutes, { services: resolvedServices });
   await app.register(agentRoutes, { services: resolvedServices });
   await app.register(toolRoutes, { services: resolvedServices });
+  await app.register(toolPolicyRoutes, { services: resolvedServices });
   await app.register(runRoutes, { services: resolvedServices });
   await app.register(approvalRoutes, { services: resolvedServices });
   await app.register(knowledgeRoutes, { services: resolvedServices });

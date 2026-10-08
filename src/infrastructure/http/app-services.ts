@@ -31,6 +31,8 @@ import { KnowledgeDocumentRepository } from '../../modules/knowledge/infrastruct
 import { KnowledgeSearchRepository } from '../../modules/knowledge/infrastructure/knowledge-search.repository.js';
 import { KnowledgeRetriever } from '../../modules/knowledge/application/knowledge-retriever.js';
 import { KnowledgeService } from '../../modules/knowledge/application/knowledge.service.js';
+import { ToolPolicyRepository } from '../../modules/tools/infrastructure/tool-policy.repository.js';
+import { ToolPolicyService } from '../../modules/tools/application/tool-policy.service.js';
 import { buildModelRouter } from '../ai/model-registry.js';
 import type { AuthenticationPort } from '../../modules/identity/application/authentication.port.js';
 
@@ -46,6 +48,7 @@ export interface AppServices {
   runService: RunService;
   approvalService: ApprovalService;
   knowledgeService: KnowledgeService;
+  toolPolicyService: ToolPolicyService;
   auditQueryService: AuditQueryService;
 }
 
@@ -67,6 +70,7 @@ export function buildAppServices(db: Database, env: Env): AppServices {
   const knowledgeBases = new KnowledgeBaseRepository(db);
   const knowledgeDocuments = new KnowledgeDocumentRepository(db);
   const knowledgeRetriever = new KnowledgeRetriever(new KnowledgeSearchRepository(db));
+  const toolPolicies = new ToolPolicyRepository(db);
 
   const authenticator = buildAuthenticator(env, new ActivePrincipalReader(principals), new PrincipalProvisioner(principals));
   const tenantContextResolver = new TenantContextResolver(
@@ -85,6 +89,8 @@ export function buildAppServices(db: Database, env: Env): AppServices {
     new BuiltInToolExecutor(new NoteRepository(db), () => new Date(), knowledgeRetriever),
     authorizationService,
     auditLog,
+    () => new Date(),
+    { toolPolicies },
   );
 
   return {
@@ -110,6 +116,7 @@ export function buildAppServices(db: Database, env: Env): AppServices {
     approvalService: new ApprovalService(approvalRepository, runService, agentRepository, memberships, authorizationService, auditLog),
     runService,
     knowledgeService: new KnowledgeService(knowledgeBases, knowledgeDocuments, knowledgeRetriever, authorizationService, auditLog),
+    toolPolicyService: new ToolPolicyService(toolPolicies, authorizationService, auditLog),
     auditQueryService: new AuditQueryService(auditLog, authorizationService),
   };
 }
