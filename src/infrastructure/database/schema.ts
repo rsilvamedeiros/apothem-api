@@ -12,3 +12,4 @@ export * from '../../modules/agents/infrastructure/schema.js';
 export * from '../../modules/runs/infrastructure/schema.js';
 export * from '../../modules/approvals/infrastructure/schema.js';
 export * from '../../modules/tools/infrastructure/schema.js';
+export * from '../../modules/knowledge/infrastructure/schema.js';
