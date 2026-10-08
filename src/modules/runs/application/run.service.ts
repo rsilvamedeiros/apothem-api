@@ -12,9 +12,10 @@ import type { GenerateResult, ModelGatewayPort, ModelMessage } from '../../model
 import type { ModelPolicy } from '../../models/domain/model-policy.js';
 import { MAX_TOOL_RESULT_LENGTH, type ToolExecutorPort } from '../../tools/application/tool-executor.js';
 import { getToolDefinition, toModelTool } from '../../tools/domain/tool-catalog.js';
+import type { ToolPolicyPort } from '../../tools/application/tool-policy.port.js';
 import { parseKnowledgeBindings } from '../../knowledge/domain/knowledge-bindings.js';
 import { parseToolBindings, type ToolBinding } from '../../tools/domain/tool-bindings.js';
-import { evaluateToolPolicy } from '../../tools/domain/tool-policy.js';
+import { evaluateToolPolicy, type WorkspaceToolRule } from '../../tools/domain/tool-policy.js';
 import { decodeKeysetCursor, encodeKeysetCursor } from '../../../common/keyset-cursor.js';
 import { ConflictError, ForbiddenError, InvalidInputError, NotFoundError } from '../../../common/errors.js';
 import type { RunErrorCode } from '../domain/run-state.js';
@@ -60,6 +61,8 @@ export interface RunDetail {
 
 export interface RunServiceOptions {
   approvalTtlMs?: number;
+  /** Workspace rules for tools (ADR-015). Without it no rule applies. */
+  toolPolicies?: ToolPolicyPort;
 }
 
 /** Fixed, user-safe text per code. Provider messages, policies and tool names never reach a run record. */
@@ -70,6 +73,7 @@ const ERROR_MESSAGES: Record<RunErrorCode, string> = {
   MODEL_REQUEST_REJECTED: 'The model provider rejected the request.',
   RUN_BUDGET_EXCEEDED: 'The run exceeded its time budget.',
   TOOL_NOT_BOUND: 'The model asked for a tool this agent does not have.',
+  TOOL_BLOCKED_BY_POLICY: 'A workspace policy does not allow this tool.',
   TOOL_ARGUMENT_INVALID: 'The model proposed arguments that do not match the tool contract.',
   TOOL_LIMIT_EXCEEDED: 'The run reached its limit of tool calls.',
   TOOL_EXECUTION_FAILED: 'A tool could not complete its action.',
@@ -169,6 +173,7 @@ function parseSetup(version: AgentVersion): RunSetup | undefined {
  */
 export class RunService {
   private readonly approvalTtlMs: number;
+  private readonly toolPolicies: ToolPolicyPort | undefined;
 
   constructor(
     private readonly agents: AgentPort,
@@ -184,6 +189,23 @@ export class RunService {
     options: RunServiceOptions = {},
   ) {
     this.approvalTtlMs = options.approvalTtlMs ?? DEFAULT_APPROVAL_TTL_MS;
+    this.toolPolicies = options.toolPolicies;
+  }
+
+  /** The workspace rule per tool name. A failure to read them is the caller's to treat as fatal (fail closed). */
+  private async workspaceRules(workspaceId: string): Promise<Map<string, WorkspaceToolRule>> {
+    if (!this.toolPolicies) return new Map();
+    const rows = await this.toolPolicies.listByWorkspace(workspaceId);
+    return new Map(rows.map((row) => [row.toolName, row.rule]));
+  }
+
+  /**
+   * Internal check for collaborating services (approvals): whether the
+   * workspace no longer lets this tool run. Callers enforce authorization.
+   */
+  async isToolBlocked(workspaceId: string, toolName: string): Promise<boolean> {
+    const rule = (await this.workspaceRules(workspaceId)).get(toolName);
+    return rule !== undefined && rule !== 'approval_required';
   }
 
   async start(context: TenantContext, agentId: string, input: StartRunInput): Promise<StartRunResult> {
@@ -272,6 +294,19 @@ export class RunService {
 
     const setup = parseSetup(version);
     if (!setup) return this.fail(running, 'RUN_CONFIG_INVALID', actorPrincipalId, version);
+
+    // A rule set after the proposal was made still wins: nothing blocked is performed (ADR-015).
+    let blocked: boolean;
+    try {
+      blocked = await this.isToolBlocked(run.workspaceId, approval.toolName);
+    } catch {
+      return this.fail(running, 'RUN_INTERNAL_ERROR', actorPrincipalId, version);
+    }
+    if (blocked) {
+      const resumeSequence = await this.nextSequence(run.id);
+      await this.recordToolStep(run.id, resumeSequence, 'failed', { tool: approval.toolName, outcome: 'executed' }, 'TOOL_BLOCKED_BY_POLICY');
+      return this.fail(running, 'TOOL_BLOCKED_BY_POLICY', actorPrincipalId, version);
+    }
 
     const executed = await this.tools.execute(
       {
@@ -364,9 +399,18 @@ export class RunService {
    */
   private async drive(run: Run, version: AgentVersion, task: string, setup: RunSetup, actorPrincipalId: string): Promise<Run> {
     const deadline = Date.now() + setup.limits.timeoutMs;
+
+    // Without the workspace rules the run cannot be judged, so it does not start (ADR-015).
+    let rules: Map<string, WorkspaceToolRule>;
+    try {
+      rules = await this.workspaceRules(run.workspaceId);
+    } catch {
+      return this.fail(run, 'RUN_INTERNAL_ERROR', actorPrincipalId, version);
+    }
+    // A blocked tool is not even described to the model.
     const boundTools = setup.bindings.flatMap((binding) => {
       const definition = getToolDefinition(binding.tool);
-      return definition ? [toModelTool(definition)] : [];
+      return definition && rules.get(binding.tool) !== 'blocked' ? [toModelTool(definition)] : [];
     });
 
     for (;;) {
@@ -400,9 +444,16 @@ export class RunService {
       const proposedName = result.output.toolName;
       const definition = getToolDefinition(proposedName);
       const binding = setup.bindings.find((candidate) => candidate.tool === proposedName);
-      const decision = definition ? evaluateToolPolicy({ risk: definition.risk, binding }) : ({ outcome: 'deny' } as const);
+      const decision = definition
+        ? evaluateToolPolicy({ risk: definition.risk, binding, workspaceRule: rules.get(definition.name) })
+        : ({ outcome: 'deny', reason: 'TOOL_NOT_BOUND' } as const);
 
       if (!definition || decision.outcome === 'deny') {
+        if (definition && decision.outcome === 'deny' && decision.reason === 'TOOL_BLOCKED_BY_POLICY') {
+          // The tool is real and bound, so naming it is safe and tells the author what was blocked. Arguments are never stored.
+          await this.recordToolStep(run.id, toolSequence, 'failed', { tool: definition.name, outcome: 'executed' }, 'TOOL_BLOCKED_BY_POLICY');
+          return this.fail(run, 'TOOL_BLOCKED_BY_POLICY', actorPrincipalId, version);
+        }
         // Neither the requested name nor its arguments are stored: they are model output, not a contract.
         await this.recordToolStep(run.id, toolSequence, 'failed', { tool: 'unavailable', outcome: 'executed' }, 'TOOL_NOT_BOUND');
         return this.fail(run, 'TOOL_NOT_BOUND', actorPrincipalId, version);

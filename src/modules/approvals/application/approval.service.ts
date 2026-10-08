@@ -187,6 +187,10 @@ export class ApprovalService {
     if (!run || run.status !== 'waiting_approval') {
       return 'the run is no longer waiting';
     }
+    // A rule set after the proposal was made still wins (ADR-015). If it cannot be read, nothing is approved.
+    if (await this.runs.isToolBlocked(workspaceId, approval.toolName)) {
+      return 'the tool is blocked by a workspace policy';
+    }
     return undefined;
   }
 

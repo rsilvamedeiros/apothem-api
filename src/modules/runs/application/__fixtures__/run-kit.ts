@@ -20,6 +20,8 @@ import { RunService } from '../run.service.js';
 import { ApprovalService } from '../../../approvals/application/approval.service.js';
 import { KnowledgeRetriever } from '../../../knowledge/application/knowledge-retriever.js';
 import { KnowledgeService } from '../../../knowledge/application/knowledge.service.js';
+import { ToolPolicyService } from '../../../tools/application/tool-policy.service.js';
+import { FakeToolPolicyRepository } from '../../../tools/application/__fixtures__/fake-tool-policy-repository.js';
 import {
   FakeKnowledgeBaseRepository,
   FakeKnowledgeDocumentRepository,
@@ -103,6 +105,7 @@ export function buildRunKit(options: RunKitOptions = {}) {
   const knowledgeDocuments = new FakeKnowledgeDocumentRepository();
   const knowledgeSearch = new FakeKnowledgeSearch(knowledgeBases, knowledgeDocuments);
   const knowledgeRetriever = new KnowledgeRetriever(knowledgeSearch);
+  const toolPolicies = new FakeToolPolicyRepository();
   const audit = new FakeAuditLog();
   const gateway = new ScriptedGateway();
   const authorization = new AuthorizationService();
@@ -111,10 +114,12 @@ export function buildRunKit(options: RunKitOptions = {}) {
   const executor = options.executor ?? new BuiltInToolExecutor(notes, now, knowledgeRetriever);
   const agentService = new AgentService(agents, drafts, versions, authorization, audit);
   const runService = new RunService(agents, versions, runs, steps, approvals, gateway, executor, authorization, audit, now, {
+    toolPolicies,
     ...(options.approvalTtlMs ? { approvalTtlMs: options.approvalTtlMs } : {}),
   });
 
   const approvalService = new ApprovalService(approvals, runService, agents, memberships, authorization, audit, now);
+  const toolPolicyService = new ToolPolicyService(toolPolicies, authorization, audit);
   const knowledgeService = new KnowledgeService(knowledgeBases, knowledgeDocuments, knowledgeRetriever, authorization, audit, now);
 
   /** Seeds an active organization membership so separation-of-duties rules can see who else could approve. */
@@ -148,6 +153,6 @@ export function buildRunKit(options: RunKitOptions = {}) {
   return {
     agents, drafts, versions, runs, steps, approvals, notes, memberships, audit, gateway, authorization,
     agentService, runService, approvalService, executor, clock, now, publishedAgent, addMember,
-    knowledgeBases, knowledgeDocuments, knowledgeSearch, knowledgeService,
+    knowledgeBases, knowledgeDocuments, knowledgeSearch, knowledgeService, toolPolicies, toolPolicyService,
   };
 }
