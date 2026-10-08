@@ -23,6 +23,20 @@ describe('tool catalog', () => {
   it('classifies the built-ins conservatively', () => {
     expect(getToolDefinition('get_current_time')?.risk).toBe('read_only');
     expect(getToolDefinition('create_note')?.risk).toBe('reversible_write');
+    expect(getToolDefinition('search_knowledge')?.risk).toBe('read_only');
+  });
+
+  it('validates search_knowledge arguments strictly: a query and nothing else', () => {
+    const schema = getToolDefinition('search_knowledge')!.argumentsSchema;
+    expect(schema.safeParse({ query: 'refund policy' }).success).toBe(true);
+    expect(schema.safeParse({ query: '  padded  ' })).toMatchObject({ success: true, data: { query: 'padded' } });
+    expect(schema.safeParse({ query: 'q'.repeat(300) }).success).toBe(true);
+    expect(schema.safeParse({ query: 'q'.repeat(301) }).success).toBe(false);
+    expect(schema.safeParse({ query: '   ' }).success).toBe(false);
+    expect(schema.safeParse({}).success).toBe(false);
+    // The model cannot pick or widen the knowledge bases: scope comes from the published version.
+    expect(schema.safeParse({ query: 'x', knowledgeBaseIds: ['11111111-1111-4111-8111-111111111111'] }).success).toBe(false);
+    expect(schema.safeParse({ query: 'x', workspaceId: 'other' }).success).toBe(false);
   });
 
   it('looks tools up safely, including inherited property names', () => {
