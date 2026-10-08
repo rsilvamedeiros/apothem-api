@@ -19,6 +19,7 @@ export const CAPABILITIES = [
   'connection.manage',
   'agent.run',
   'approval.decide',
+  'policy.manage',
   'run.read',
   'audit.read',
   'apikey.manage',

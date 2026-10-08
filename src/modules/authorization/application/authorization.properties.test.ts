@@ -118,7 +118,7 @@ describe('role bundles (properties)', () => {
   });
 
   it('never let the auditor write or run anything', () => {
-    const forbidden = ['agent.draft.write', 'agent.publish', 'agent.run', 'knowledge.manage', 'connection.manage', 'apikey.manage'] as const;
+    const forbidden = ['agent.draft.write', 'agent.publish', 'agent.run', 'knowledge.manage', 'connection.manage', 'apikey.manage', 'policy.manage'] as const;
     for (const capability of forbidden) {
       expect(ROLE_CAPABILITIES.auditor.has(capability)).toBe(false);
     }
