@@ -23,7 +23,8 @@ describe('RunService with knowledge (ADR-014)', () => {
   const refunds = { title: 'Refund policy', content: '# Refunds\n\nRefunds are issued to the original card within five business days.' };
   const shipping = { title: 'Shipping', content: '# Shipping\n\nStandard shipping takes three days.' };
 
-  async function ask(knowledgeBaseIds: string[], query = 'how long do refunds take', toolBindings: object[] = [search]) {
+  // The refund passage matches several of these terms, so it outranks any other regardless of tie-breaking.
+  async function ask(knowledgeBaseIds: string[], query = 'refunds issued to the original card', toolBindings: object[] = [search]) {
     const { agent } = await kit.publishedAgent({ toolBindings, knowledgeBindings: knowledgeBaseIds.map((knowledgeBaseId) => ({ knowledgeBaseId })) });
     kit.gateway.respondWith(toolCallResult('search_knowledge', { query }), textResult('Five business days.'));
     const { run } = await kit.runService.start(builder, agent.id, { input: 'refunds?' });
@@ -51,7 +52,7 @@ describe('RunService with knowledge (ADR-014)', () => {
 
     expect(kit.approvals.rows).toHaveLength(0);
     const step = (await kit.steps.listByRun(run.id)).find((s) => s.type === 'tool_call')!;
-    expect(step).toMatchObject({ status: 'completed', detail: { tool: 'search_knowledge', outcome: 'executed', arguments: { query: 'how long do refunds take' } } });
+    expect(step).toMatchObject({ status: 'completed', detail: { tool: 'search_knowledge', outcome: 'executed', arguments: { query: 'refunds issued to the original card' } } });
     const results = (step.detail as { result: { results: { evidenceId: string; title: string; section: string }[] } }).result.results;
     expect(results).toEqual([
       expect.objectContaining({ evidenceId: kit.knowledgeDocuments.chunks[0]!.id, title: 'Refund policy', section: 'Refunds', ordinal: 0 }),
