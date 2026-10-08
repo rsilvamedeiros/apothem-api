@@ -17,7 +17,8 @@ export interface Chunk {
 
 // Control characters (except tab and newline), zero width characters and
 // bidirectional overrides: none carry meaning and several can hide text.
-const INVISIBLE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F​-‏‪-‮⁠-⁤﻿]/g;
+// eslint-disable-next-line no-control-regex, no-irregular-whitespace -- matching these characters is the whole point
+const INVISIBLE =/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F​-‏‪-‮⁠-⁤﻿]/g;
 const HEADING = /^#{1,6}\s+(\S.*)$/;
 
 export function normalizeText(raw: string): string {
