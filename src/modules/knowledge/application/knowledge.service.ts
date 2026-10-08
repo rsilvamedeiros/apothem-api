@@ -13,7 +13,7 @@ export const MAX_KNOWLEDGE_BASES_PER_WORKSPACE = 20;
 export const MAX_DOCUMENTS_PER_BASE = 100;
 export const MAX_DOCUMENT_CONTENT_LENGTH = 100_000;
 /** Refuses absurd payloads before spending any time normalizing them. */
-const MAX_RAW_CONTENT_LENGTH = MAX_DOCUMENT_CONTENT_LENGTH * 2;
+export const MAX_RAW_CONTENT_LENGTH = MAX_DOCUMENT_CONTENT_LENGTH * 2;
 export const MAX_CHUNKS_PER_DOCUMENT = 500;
 export const MAX_BASE_NAME_LENGTH = 100;
 export const MAX_BASE_DESCRIPTION_LENGTH = 500;
