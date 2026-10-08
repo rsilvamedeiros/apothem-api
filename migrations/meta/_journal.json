@@ -43,6 +43,13 @@
       "when": 1791487589550,
       "tag": "0005_gigantic_thundra",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791494544211,
+      "tag": "0006_last_shard",
+      "breakpoints": true
     }
   ]
 }
