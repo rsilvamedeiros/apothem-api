@@ -90,6 +90,46 @@ describe('chunkText', () => {
     expect(chunks.map((c) => c.text.length)).toEqual([CHUNK_MAX_CHARS, CHUNK_MAX_CHARS, 10]);
   });
 
+  it('trims the section name', () => {
+    expect(chunkText('#   Spaced title   \n\nbody')[0]!.section).toBe('Spaced title');
+  });
+
+  it('keeps single line breaks inside one paragraph', () => {
+    expect(chunkText('line one\nline two')).toEqual([{ ordinal: 0, text: 'line one\nline two', section: null }]);
+  });
+
+  it('skips blank units instead of storing them', () => {
+    expect(chunkText('first\n\n   \n\nsecond').map((c) => c.text)).toEqual(['first\n\nsecond']);
+  });
+
+  it('packs paragraphs up to exactly the target size and no further', () => {
+    const half = (CHUNK_TARGET_CHARS - 2) / 2;
+    expect(chunkText(`${'a'.repeat(half)}\n\n${'b'.repeat(half)}`)).toHaveLength(1);
+    expect(chunkText(`${'a'.repeat(half)}\n\n${'b'.repeat(half + 1)}`)).toHaveLength(2);
+  });
+
+  describe('splitting long text', () => {
+    it('keeps text of exactly the hard maximum in one chunk', () => {
+      expect(chunkText('x'.repeat(CHUNK_MAX_CHARS)).map((c) => c.text.length)).toEqual([CHUNK_MAX_CHARS]);
+    });
+
+    it('cuts right after the maximum when a space sits exactly there', () => {
+      const chunks = chunkText(`${'a'.repeat(CHUNK_MAX_CHARS)} ${'b'.repeat(10)}`);
+      expect(chunks.map((c) => c.text)).toEqual(['a'.repeat(CHUNK_MAX_CHARS), 'b'.repeat(10)]);
+    });
+
+    it('ignores a space in the first half and cuts at the maximum instead', () => {
+      const half = CHUNK_MAX_CHARS / 2;
+      const chunks = chunkText(`${'a'.repeat(half)} ${'b'.repeat(CHUNK_MAX_CHARS)}`);
+      expect(chunks[0]!.text).toHaveLength(CHUNK_MAX_CHARS);
+    });
+
+    it('drops the whitespace at the end of a cut piece but keeps the words', () => {
+      const chunks = chunkText(`${'a'.repeat(CHUNK_MAX_CHARS - 3)}   ${'b'.repeat(50)}`);
+      expect(chunks.map((c) => c.text)).toEqual(['a'.repeat(CHUNK_MAX_CHARS - 3), 'b'.repeat(50)]);
+    });
+  });
+
   it('is deterministic', () => {
     const text = '# A\n\nfirst paragraph\n\nsecond paragraph\n\n# B\n\nthird';
     expect(chunkText(text)).toEqual(chunkText(text));

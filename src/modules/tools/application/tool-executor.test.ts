@@ -159,7 +159,13 @@ describe('BuiltInToolExecutor', () => {
       expect(serialized.length).toBeLessThanOrEqual(MAX_TOOL_RESULT_LENGTH);
       const results = (outcome.ok ? outcome.result.results : []) as { evidenceId: string; text: string }[];
       expect(results).toHaveLength(3);
-      expect(results.every((r) => r.text.endsWith('…') || r.text.length < 500)).toBe(true);
+      // Shrunk texts keep their beginning and say so; none is emptied.
+      const original = `"line"\n`.repeat(70).slice(0, 500);
+      for (const r of results) {
+        expect(r.text.length).toBeGreaterThan(20);
+        expect(r.text.endsWith('…') ? original.startsWith(r.text.slice(0, -1).slice(0, 30)) : true).toBe(true);
+      }
+      expect(results.some((r) => r.text.endsWith('…'))).toBe(true);
     });
 
     it('leaves a result that already fits untouched', async () => {
