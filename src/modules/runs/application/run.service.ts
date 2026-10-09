@@ -13,6 +13,7 @@ import type { ModelPolicy } from '../../models/domain/model-policy.js';
 import { MAX_TOOL_RESULT_LENGTH, type ToolExecutorPort } from '../../tools/application/tool-executor.js';
 import { getToolDefinition, toModelTool } from '../../tools/domain/tool-catalog.js';
 import type { ToolPolicyPort } from '../../tools/application/tool-policy.port.js';
+import { extractSources, type RunSource } from '../domain/run-sources.js';
 import { parseKnowledgeBindings } from '../../knowledge/domain/knowledge-bindings.js';
 import { parseToolBindings, type ToolBinding } from '../../tools/domain/tool-bindings.js';
 import { evaluateToolPolicy, type WorkspaceToolRule } from '../../tools/domain/tool-policy.js';
@@ -57,6 +58,8 @@ export interface RunDetail {
   run: Run;
   steps: RunStep[];
   approvals: Approval[];
+  /** The knowledge the run read; empty unless the reader may use knowledge (titles reveal what exists). */
+  sources: RunSource[];
 }
 
 export interface RunServiceOptions {
@@ -358,10 +361,12 @@ export class RunService {
     if (!run || !this.canSee(context, run)) {
       throw new NotFoundError(`Run ${runId} not found`);
     }
+    const steps = await this.steps.listByRun(run.id);
     return {
       run,
-      steps: await this.steps.listByRun(run.id),
+      steps,
       approvals: await this.approvals.list(workspaceId, { runId: run.id }, { limit: MAX_TOOL_CALLS_PER_RUN + 1 }),
+      sources: this.authorization.can(context, 'knowledge.use') ? extractSources(steps) : [],
     };
   }
 

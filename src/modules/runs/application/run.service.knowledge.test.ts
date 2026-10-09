@@ -146,4 +146,46 @@ describe('RunService with knowledge (ADR-014)', () => {
     expect(json.length).toBeLessThanOrEqual(MAX_TOOL_RESULT_LENGTH);
     expect(() => JSON.parse(json)).not.toThrow();
   });
+
+  describe('sources consulted', () => {
+    it('lists the passages the run read, without their text or the query, for someone who can use knowledge', async () => {
+      const base = await baseWith([refunds]);
+      const { run } = await ask([base.id]);
+
+      const detail = await kit.runService.get(contextFor('admin', 'reviewer'), run.id);
+
+      expect(detail.sources).toEqual([
+        { stepSequence: 2, evidenceId: kit.knowledgeDocuments.chunks[0]!.id, title: 'Refund policy', section: 'Refunds', ordinal: 0 },
+      ]);
+      expect(JSON.stringify(detail.sources)).not.toContain('five business days');
+      expect(JSON.stringify(detail.sources)).not.toContain('refunds issued');
+    });
+
+    it('shows them to the operator who started the run, who may use knowledge', async () => {
+      const base = await baseWith([refunds]);
+      const operator = contextFor('operator', 'starter');
+      const { agent } = await kit.publishedAgent({ toolBindings: [search], knowledgeBindings: [{ knowledgeBaseId: base.id }] });
+      kit.gateway.respondWith(toolCallResult('search_knowledge', { query: 'refunds issued' }), textResult('done'));
+      const { run } = await kit.runService.start(operator, agent.id, { input: 'x' });
+      expect((await kit.runService.get(operator, run.id)).sources).toHaveLength(1);
+    });
+
+    it('hides them from a reader who cannot use knowledge, such as an auditor', async () => {
+      const base = await baseWith([refunds]);
+      const { run } = await ask([base.id]);
+      const detail = await kit.runService.get(contextFor('auditor', 'auditor'), run.id);
+      expect(detail.run.id).toBe(run.id);
+      expect(detail.sources).toEqual([]);
+    });
+
+    it('is empty when the run never searched, or searched and found nothing', async () => {
+      const { agent } = await kit.publishedAgent();
+      const plain = await kit.runService.start(builder, agent.id, { input: 'hi' });
+      expect((await kit.runService.get(builder, plain.run.id)).sources).toEqual([]);
+
+      const empty = await baseWith([], 'Empty');
+      const { run } = await ask([empty.id]);
+      expect((await kit.runService.get(builder, run.id)).sources).toEqual([]);
+    });
+  });
 });

@@ -61,7 +61,20 @@ const stepResponse = z.object({
 });
 
 const startRunResponse = z.object({ run: runResponse, replayed: z.boolean() });
-const runDetailResponse = z.object({ run: runResponse, steps: z.array(stepResponse), approvals: z.array(approvalResponse) });
+const sourceResponse = z.object({
+  stepSequence: z.number().int(),
+  evidenceId: z.string().uuid(),
+  title: z.string(),
+  section: z.string().nullable(),
+  ordinal: z.number().int(),
+});
+const runDetailResponse = z.object({
+  run: runResponse,
+  steps: z.array(stepResponse),
+  approvals: z.array(approvalResponse),
+  /** The knowledge the run read (identity and location only), for readers who may use knowledge. */
+  sources: z.array(sourceResponse),
+});
 const runPageResponse = z.object({ runs: z.array(runResponse), nextCursor: z.string().nullable() });
 
 const errorResponses = {
@@ -166,6 +179,7 @@ export async function runRoutes(app: FastifyInstance, opts: { services: AppServi
         run: serializeRun(detail.run),
         steps: detail.steps.map(serializeStep),
         approvals: detail.approvals.map(serializeApproval),
+        sources: detail.sources,
       });
     },
   );

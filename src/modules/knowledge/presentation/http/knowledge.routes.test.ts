@@ -237,6 +237,16 @@ describe('knowledge HTTP routes', () => {
       ['model_call', 'completed'],
     ]);
     expect(JSON.stringify(steps)).not.toContain('five business days');
+
+    // What it read is shown as sources (identity and location only) to readers who may use knowledge.
+    expect(detail.body.sources).toEqual([
+      { stepSequence: 2, evidenceId: expect.any(String), title: 'Refund policy', section: 'Refunds', ordinal: 0 },
+    ]);
+    expect(JSON.stringify(detail.body.sources)).not.toContain('five business days');
+    const auditor = await member(t, 'auditor', 'auditor');
+    const audited = await send(auditor.id, 'GET', `${ws(t)}/runs/${started.body.run.id}`);
+    expect(audited.status).toBe(200);
+    expect(audited.body.sources).toEqual([]);
   });
 
   it('refuses to publish an agent whose knowledge bindings are malformed', async () => {
