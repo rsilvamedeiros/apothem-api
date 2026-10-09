@@ -7,6 +7,7 @@ Owns the approval record: an immutable tool proposal waiting for, or carrying, o
 ## Endpoints
 
 - `GET /v1/organizations/:org/workspaces/:ws/approvals?status&limit&cursor` - the inbox (newest first). Needs `approval.decide`.
+- `GET .../approvals/summary` - `{ pending }`, what needs a person right now. Needs `approval.decide`. Read-only (no expiry sweep, no audit) and counts a request as open until the instant it expires, the same moment `decide` still accepts it, so the web app can ask it on every page for the menu badge.
 - `POST .../approvals/:approvalId/decision` with `{ decision: "approve" | "reject", reason? }`. Approving executes the persisted proposal and resumes the run; the response carries the decided approval and the run summary.
 - `GET .../runs/:runId` also returns the run's approvals, so the person who started the run can see what is pending.
 
@@ -16,12 +17,12 @@ Owns the approval record: an immutable tool proposal waiting for, or carrying, o
 - `approval.decide` is granted to `owner` and `admin` only; authoring and running are separate duties. The organization role decides, never a workspace role.
 - Separation of duties: the requester cannot approve their own proposal while another active owner or admin exists. A sole eligible approver may, and the record and the audit event are marked `selfApproved`.
 - Approvals expire (24 hours by default). An expired approval cannot be executed: deciding it marks it `expired` and fails the run with `APPROVAL_EXPIRED`. Listing expires stale pending requests so the inbox never offers a dead one.
-- Before executing, the service re-checks that the agent is still active and the run is still waiting. Otherwise the approval is closed (`rejected`, reason `Invalidated: ...`) and the run fails with `APPROVAL_INVALIDATED`. Rejecting fails the run with `APPROVAL_REJECTED` and performs no action.
+- Before executing, the service re-checks that the agent is still active, the run is still waiting and the tool is not blocked by a workspace policy (ADR-015). Otherwise the approval is closed (`rejected`, reason `Invalidated: ...`) and the run fails with `APPROVAL_INVALIDATED`. Rejecting fails the run with `APPROVAL_REJECTED` and performs no action.
 - The execution key is derived from the approval id, so the action can never repeat. Writes are attributed to the person who started the run, never to the approver or the model.
 - Audit: `approval.requested`, `approval.approved`, `approval.rejected`, `approval.invalidated`, `approval.expired`, with ids, tool name and `selfApproved`. Tool arguments and the free-text reason are never copied into audit.
 
 ## Not built yet
 
-Per-tenant approval policies (thresholds, required approver roles), delegation, notifications and a configurable expiry.
+Per-tenant approval policies (thresholds, required approver roles), delegation, e-mail or chat notifications (the in-product badge exists) and a configurable expiry.
 
 Reference docs (`apothem-ai/docs/`): `adr/007-human-approval-default.md`, `adr/013-tools-and-approvals-v1.md`, `04-ai/tool-calling-guardrails.md`, `04-ai/agent-runtime.md`.
