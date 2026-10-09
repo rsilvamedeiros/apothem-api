@@ -1,0 +1,30 @@
+# Render Blueprint for apothem-api (ADR-010). Secrets are never written here:
+# every `sync: false` value is typed into the Render dashboard once.
+services:
+  - type: web
+    name: apothem-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    # Liveness only. /ready (database included) is for a human or a deploy check.
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AUTH_MODE
+        value: jwt
+      - key: DATABASE_PREPARED_STATEMENTS
+        value: "false"
+      - key: DATABASE_POOL_MAX
+        value: "5"
+      - key: AUTH_JWT_ISSUER
+        sync: false
+      - key: AUTH_JWT_AUDIENCE
+        value: apothem-api
+      - key: AUTH_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: AUTH_JIT_PROVISIONING
+        value: "true"
