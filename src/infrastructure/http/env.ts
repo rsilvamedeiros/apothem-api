@@ -76,6 +76,9 @@ const envSchema = baseSchema.superRefine((env, ctx) => {
   }
 });
 
+/** Every variable the API reads. Deployment files are checked against this list so they cannot drift from the code. */
+export const ENV_KEYS: readonly string[] = Object.keys(baseSchema.shape);
+
 export type Env = z.infer<typeof envSchema>;
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
