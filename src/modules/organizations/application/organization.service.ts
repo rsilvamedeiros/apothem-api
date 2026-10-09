@@ -34,13 +34,18 @@ export class OrganizationService {
       throw new ConflictError(`Organization slug "${input.slug}" is already in use`);
     }
 
-    const organization = await this.organizations.create({ name: input.name, slug: input.slug });
-    const membership = await this.memberships.create({
-      organizationId: organization.id,
-      principalId: principal.id,
-      role: 'owner',
-      status: 'active',
-    });
+    // One atomic write: an organization and its owner exist together or not at all.
+    let created;
+    try {
+      created = await this.organizations.createWithOwner({ name: input.name, slug: input.slug }, principal.id);
+    } catch (error) {
+      // A concurrent request can take the slug between the check above and the write; the unique index decides.
+      if (await this.organizations.findBySlug(input.slug)) {
+        throw new ConflictError(`Organization slug "${input.slug}" is already in use`);
+      }
+      throw error;
+    }
+    const { organization, membership } = created;
 
     await this.audit.record({
       organizationId: organization.id,

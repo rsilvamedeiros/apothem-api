@@ -77,6 +77,27 @@ export class FakePrincipalRepository implements PrincipalPort {
 export class FakeOrganizationRepository implements OrganizationPort {
   private readonly rows: Organization[] = [];
 
+  /** The memberships store the owner is written to, so `createWithOwner` can be atomic like the real one. */
+  constructor(private readonly memberships?: FakeMembershipRepository) {}
+
+  async createWithOwner(input: NewOrganization, ownerPrincipalId: string): Promise<{ organization: Organization; membership: Membership }> {
+    if (!this.memberships) {
+      throw new Error('FakeOrganizationRepository needs a memberships store to create an organization with its owner');
+    }
+    if (this.rows.some((row) => row.slug === input.slug)) {
+      throw new Error('duplicate key value violates unique constraint "organizations_slug_uq"');
+    }
+    const organization = this.insert(input);
+    try {
+      const membership = await this.memberships.create({ organizationId: organization.id, principalId: ownerPrincipalId, role: 'owner', status: 'active' });
+      return { organization, membership };
+    } catch (error) {
+      // Roll back, like a failed transaction would.
+      this.rows.splice(this.rows.indexOf(organization), 1);
+      throw error;
+    }
+  }
+
   async findById(id: string): Promise<Organization | undefined> {
     return this.rows.find((row) => row.id === id);
   }
@@ -86,6 +107,10 @@ export class FakeOrganizationRepository implements OrganizationPort {
   }
 
   async create(input: NewOrganization): Promise<Organization> {
+    return this.insert(input);
+  }
+
+  private insert(input: NewOrganization): Organization {
     const row: Organization = {
       id: input.id ?? nextId('org'),
       name: input.name,

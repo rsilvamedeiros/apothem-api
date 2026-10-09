@@ -51,7 +51,7 @@ export function buildTestServices(): TestServices {
   const memberships = new FakeMembershipRepository();
   const workspaces = new FakeWorkspaceRepository();
   const workspaceMemberships = new FakeWorkspaceMembershipRepository();
-  const organizations = new FakeOrganizationRepository();
+  const organizations = new FakeOrganizationRepository(memberships);
   const audit = new FakeAuditLog();
   const authorizationService = new AuthorizationService();
   const agentRepository = new FakeAgentRepository();
