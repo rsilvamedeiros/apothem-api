@@ -270,4 +270,32 @@ describe('Drizzle repositories on real Postgres (integration)', () => {
       expect(await audit.list(t.organization.id, {}, { limit: 10 })).toHaveLength(1);
     });
   });
+
+  describe('creating an organization together with its owner', () => {
+    it('stores both in one write', async () => {
+      const principal = await principals.create({ type: 'user', email: 'atomic-ok@example.com', name: 'Atomic' });
+      const { organization, membership } = await organizations.createWithOwner({ name: 'Atomic', slug: 'atomic-ok' }, principal.id);
+
+      expect(await organizations.findBySlug('atomic-ok')).toMatchObject({ id: organization.id });
+      expect(membership).toMatchObject({ organizationId: organization.id, principalId: principal.id, role: 'owner', status: 'active' });
+      expect((await memberships.listByOrganization(organization.id)).map((m) => m.role)).toEqual(['owner']);
+    });
+
+    it('leaves no organization behind when the owner cannot be stored', async () => {
+      const unknownPrincipal = '99999999-9999-4999-8999-999999999999';
+      await expect(organizations.createWithOwner({ name: 'Orphan', slug: 'atomic-orphan' }, unknownPrincipal)).rejects.toThrow();
+      expect(await organizations.findBySlug('atomic-orphan')).toBeUndefined();
+    });
+
+    it('rejects a taken slug without creating a second membership, and the slug stays with its first owner', async () => {
+      const first = await principals.create({ type: 'user', email: 'atomic-first@example.com', name: 'First' });
+      const second = await principals.create({ type: 'user', email: 'atomic-second@example.com', name: 'Second' });
+      const { organization } = await organizations.createWithOwner({ name: 'Taken', slug: 'atomic-taken' }, first.id);
+
+      await expect(organizations.createWithOwner({ name: 'Other', slug: 'atomic-taken' }, second.id)).rejects.toThrow();
+
+      expect(await memberships.listByPrincipal(second.id)).toEqual([]);
+      expect((await memberships.listByOrganization(organization.id)).map((m) => m.principalId)).toEqual([first.id]);
+    });
+  });
 });
