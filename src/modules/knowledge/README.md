@@ -28,7 +28,7 @@ presentation/    /v1/organizations/:o/workspaces/:w/knowledge-bases routes
 
 - Tenant and workspace come from the authenticated context; a base of another workspace is indistinguishable from a missing one.
 - Capabilities: `knowledge.manage` (owner, admin, builder) writes; `knowledge.use` (also operator) reads and searches. Auditors have neither.
-- Audit events carry ids, checksums and sizes only (`knowledge_base.created|archived`, `knowledge_document.added|removed`); text and queries are never copied. Run steps keep the evidence (ids, titles) under the run's retention; the public step view omits it.
+- Audit events carry ids, checksums and sizes only (`knowledge_base.created|archived`, `knowledge_document.added|removed`); text and queries are never copied. Run steps keep the evidence (ids, titles) under the run's retention; the public step view omits it. The run detail adds `sources` (step, evidence id, title, section, passage number, never the text or the query), extracted from completed `search_knowledge` steps and returned only to readers with `knowledge.use`.
 - Document text is untrusted content. It is stripped of control and bidirectional override characters, stored as text, and never interpreted as instructions.
 
 ## Not in v1
