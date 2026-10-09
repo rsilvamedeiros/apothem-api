@@ -465,4 +465,54 @@ describe('ApprovalService (ADR-013)', () => {
       });
     });
   });
+
+  describe('summary (what needs a person)', () => {
+    it('counts the pending approvals of the workspace for those who can decide', async () => {
+      expect(await kit.approvalService.summary(admin)).toEqual({ pending: 0 });
+      await waitingRun();
+      await waitingRun();
+      expect(await kit.approvalService.summary(admin)).toEqual({ pending: 2 });
+    });
+
+    it('does not count what was decided, nor what already expired', async () => {
+      const first = await waitingRun();
+      const second = await waitingRun();
+      await kit.approvalService.decide(admin, kit.approvals.rows.find((a) => a.runId === first.run.id)!.id, { decision: 'reject' });
+      expect(await kit.approvalService.summary(admin)).toEqual({ pending: 1 });
+
+      kit.clock.current = new Date(kit.approvals.rows.find((a) => a.runId === second.run.id)!.expiresAt.getTime() + 1);
+      expect(await kit.approvalService.summary(admin)).toEqual({ pending: 0 });
+    });
+
+    it('still counts a request on the very instant it expires, because it can still be decided then', async () => {
+      await waitingRun();
+      kit.clock.current = new Date(kit.approvals.rows[0]!.expiresAt);
+      expect(await kit.approvalService.summary(admin)).toEqual({ pending: 1 });
+      kit.clock.current = new Date(kit.approvals.rows[0]!.expiresAt.getTime() + 1);
+      expect(await kit.approvalService.summary(admin)).toEqual({ pending: 0 });
+    });
+
+    it('only counts the caller workspace', async () => {
+      await waitingRun();
+      expect(await kit.approvalService.summary(contextFor('admin', 'approver', OTHER_WORKSPACE))).toEqual({ pending: 0 });
+    });
+
+    it.each(['builder', 'operator', 'auditor'] as const)('is for deciders only: %s is denied', async (role) => {
+      await waitingRun();
+      await expect(kit.approvalService.summary(contextFor(role, `other-${role}`))).rejects.toThrow(ForbiddenError);
+    });
+
+    it('requires a workspace scope', async () => {
+      await expect(kit.approvalService.summary(contextFor('admin', 'approver', null))).rejects.toThrow('Approvals require a resolved workspace scope');
+    });
+
+    it('does not change anything: no expiry sweep, no audit', async () => {
+      await waitingRun();
+      const before = kit.audit.events.length;
+      kit.clock.current = new Date(kit.approvals.rows[0]!.expiresAt.getTime() + 1000);
+      await kit.approvalService.summary(admin);
+      expect(kit.approvals.rows[0]!.status).toBe('pending');
+      expect(kit.audit.events).toHaveLength(before);
+    });
+  });
 });

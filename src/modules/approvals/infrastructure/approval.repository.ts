@@ -1,4 +1,4 @@
-import { and, desc, eq, lt, or, type SQL } from 'drizzle-orm';
+import { and, count, desc, eq, gte, lt, or, type SQL } from 'drizzle-orm';
 import type { Database } from '../../../infrastructure/database/client.js';
 import type {
   ApprovalDecisionPatch,
@@ -55,6 +55,14 @@ export class ApprovalRepository implements ApprovalPort {
       .where(and(...conditions))
       .orderBy(desc(approvals.createdAt), desc(approvals.id))
       .limit(page.limit);
+  }
+
+  async countOpen(workspaceId: string, now: Date): Promise<number> {
+    const [row] = await this.db
+      .select({ total: count() })
+      .from(approvals)
+      .where(and(eq(approvals.workspaceId, workspaceId), eq(approvals.status, 'pending'), gte(approvals.expiresAt, now)));
+    return row?.total ?? 0;
   }
 
   async decide(workspaceId: string, approvalId: string, patch: ApprovalDecisionPatch): Promise<Approval | undefined> {

@@ -66,6 +66,30 @@ describe('approvals HTTP routes (full flow with the mock model)', () => {
     expect((await send(undefined, 'POST', `${ws(t)}/approvals/${crypto.randomUUID()}/decision`, { decision: 'approve' })).status).toBe(401);
   });
 
+  it('summarises what needs a person: pending count, for deciders only, within the workspace', async () => {
+    const t = await setupOwnerWithWorkspace(app, principals);
+    const other = await setupOwnerWithWorkspace(app, principals);
+    const builder = await member(t, 'builder', 'builder');
+    const operator = await member(t, 'operator', 'operator');
+    const auditor = await member(t, 'auditor', 'auditor');
+    const agentId = await agentWithWriteTool(t);
+
+    expect((await send(undefined, 'GET', `${ws(t)}/approvals/summary`)).status).toBe(401);
+    expect((await send(t.owner.id, 'GET', `${ws(t)}/approvals/summary`)).body).toEqual({ pending: 0 });
+
+    const { approval } = await startWaitingRun(t, builder.id, agentId);
+    expect((await send(t.owner.id, 'GET', `${ws(t)}/approvals/summary`)).body).toEqual({ pending: 1 });
+    expect((await send(other.owner.id, 'GET', `${ws(other)}/approvals/summary`)).body).toEqual({ pending: 0 });
+    expect([403, 404]).toContain((await send(other.owner.id, 'GET', `${ws(t)}/approvals/summary`)).status);
+
+    for (const who of [builder, operator, auditor]) {
+      expect((await send(who.id, 'GET', `${ws(t)}/approvals/summary`)).status).toBe(403);
+    }
+
+    await send(t.owner.id, 'POST', `${ws(t)}/approvals/${approval.id}/decision`, { decision: 'reject' });
+    expect((await send(t.owner.id, 'GET', `${ws(t)}/approvals/summary`)).body.pending).toBe(0);
+  });
+
   it('parks a write for approval, then an approver approves it and the run completes', async () => {
     const t = await setupOwnerWithWorkspace(app, principals);
     const builder = await member(t, 'builder', 'builder');

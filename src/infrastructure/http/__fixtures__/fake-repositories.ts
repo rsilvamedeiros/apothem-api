@@ -565,6 +565,10 @@ export class FakeApprovalRepository implements ApprovalPort {
       .map((a) => ({ ...a }));
   }
 
+  async countOpen(workspaceId: string, now: Date): Promise<number> {
+    return this.rows.filter((a) => a.workspaceId === workspaceId && a.status === 'pending' && a.expiresAt.getTime() >= now.getTime()).length;
+  }
+
   async decide(workspaceId: string, approvalId: string, patch: ApprovalDecisionPatch): Promise<Approval | undefined> {
     const row = this.rows.find((a) => a.workspaceId === workspaceId && a.id === approvalId && a.status === 'pending');
     if (!row) return undefined;

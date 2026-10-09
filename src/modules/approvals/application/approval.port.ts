@@ -28,6 +28,8 @@ export interface ApprovalPort {
   findById(workspaceId: string, approvalId: string): Promise<Approval | undefined>;
   findPendingByRun(workspaceId: string, runId: string): Promise<Approval | undefined>;
   list(workspaceId: string, filter: ApprovalFilter, page: ApprovalPageRequest): Promise<Approval[]>;
+  /** Pending approvals that can still be decided at `now` (a request is decidable until the instant it expires). */
+  countOpen(workspaceId: string, now: Date): Promise<number>;
   /** Returns `undefined` when the approval is no longer pending (someone else decided first). */
   decide(workspaceId: string, approvalId: string, patch: ApprovalDecisionPatch): Promise<Approval | undefined>;
 }

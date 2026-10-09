@@ -84,6 +84,16 @@ export class ApprovalService {
     };
   }
 
+  /**
+   * What needs a person right now. Read-only on purpose: it neither expires
+   * anything nor writes audit, so it is cheap enough to ask on every page.
+   */
+  async summary(context: TenantContext): Promise<{ pending: number }> {
+    this.authorization.assert(context, 'approval.decide');
+    const workspaceId = requireWorkspaceScope(context);
+    return { pending: await this.approvals.countOpen(workspaceId, this.now()) };
+  }
+
   async decide(context: TenantContext, approvalId: string, input: DecideInput): Promise<DecisionResult> {
     this.authorization.assert(context, 'approval.decide');
     const workspaceId = requireWorkspaceScope(context);

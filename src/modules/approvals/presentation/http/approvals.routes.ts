@@ -51,6 +51,7 @@ const runSummary = z.object({
   errorMessage: nullableString,
 });
 
+const summaryResponse = z.object({ pending: z.number().int().min(0) });
 const approvalPage = z.object({ approvals: z.array(approvalResponse), nextCursor: nullableString });
 const decisionResponse = z.object({ approval: approvalResponse, run: runSummary });
 
@@ -110,6 +111,22 @@ export async function approvalRoutes(app: FastifyInstance, opts: { services: App
       const query = listQuery.parse(request.query);
       const page = await services.approvalService.list(await context(request, organizationId, workspaceId), query);
       reply.status(200).send({ approvals: page.approvals.map(serializeApproval), nextCursor: page.nextCursor });
+    },
+  );
+
+  // Registered before the item routes. Cheap and read-only: the web app asks it on every page of the workspace.
+  app.get(
+    `${base}/summary`,
+    {
+      schema: {
+        tags: ['approvals'],
+        params: toJsonSchema(workspaceParams),
+        response: { 200: toJsonSchema(summaryResponse), 401: errorResponses[401], 403: errorResponses[403], 404: errorResponses[404] },
+      },
+    },
+    async (request, reply) => {
+      const { organizationId, workspaceId } = workspaceParams.parse(request.params);
+      reply.status(200).send(await services.approvalService.summary(await context(request, organizationId, workspaceId)));
     },
   );
 

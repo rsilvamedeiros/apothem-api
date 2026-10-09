@@ -155,4 +155,20 @@ describe('approvals and tools on real Postgres (integration)', () => {
     expect(await database.db.select().from(workspaceNotes).where(eq(workspaceNotes.workspaceId, t.workspace.id))).toEqual([]);
     expect((await approvalRepository.findById(t.workspace.id, pending!.id))?.status).toBe('rejected');
   });
+
+  it('counts only the open approvals of one workspace, with the expiry instant still open', async () => {
+    const a = await bootstrap('count-a');
+    const b = await bootstrap('count-b');
+    const started = await call(a.owner.id, 'POST', `${a.base}/agents/${a.agent.id}/runs`, { input: WRITE });
+    const [pending] = await database.db.select().from(approvals).where(eq(approvals.runId, started.body.run.id));
+    const expiresAt = pending!.expiresAt;
+
+    expect(await approvalRepository.countOpen(a.workspace.id, new Date(expiresAt.getTime() - 1000))).toBe(1);
+    expect(await approvalRepository.countOpen(a.workspace.id, new Date(expiresAt))).toBe(1);
+    expect(await approvalRepository.countOpen(a.workspace.id, new Date(expiresAt.getTime() + 1))).toBe(0);
+    expect(await approvalRepository.countOpen(b.workspace.id, new Date(expiresAt.getTime() - 1000))).toBe(0);
+
+    await call(a.owner.id, 'POST', `${a.base}/approvals/${pending!.id}/decision`, { decision: 'reject' });
+    expect(await approvalRepository.countOpen(a.workspace.id, new Date(expiresAt.getTime() - 1000))).toBe(0);
+  });
 });
