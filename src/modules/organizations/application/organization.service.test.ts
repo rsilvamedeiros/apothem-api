@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { OrganizationService } from './organization.service.js';
 import { AuthorizationService } from '../../authorization/application/authorization.service.js';
 import type { TenantContext } from '../../authorization/application/tenant-context.js';
-import { ConflictError, ForbiddenError, NotFoundError } from '../../../common/errors.js';
+import { ForbiddenError, NotFoundError } from '../../../common/errors.js';
 import {
   FakeAuditLog,
   FakeMembershipRepository,
