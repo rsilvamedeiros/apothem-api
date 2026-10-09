@@ -10,11 +10,26 @@ const baseSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3001),
   DATABASE_URL: z.string().url(),
-  REDIS_URL: z.string().url(),
-  STORAGE_ENDPOINT: z.string().url(),
-  STORAGE_ACCESS_KEY_ID: z.string().min(1),
-  STORAGE_SECRET_ACCESS_KEY: z.string().min(1),
-  STORAGE_BUCKET: z.string().min(1),
+  /** Connections kept open. Small on purpose: a free Supabase project allows few, and one instance serves this API. */
+  DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(50).default(10),
+  /**
+   * "false" for a transaction pooler such as Supabase's, which cannot keep prepared statements (ADR-010).
+   * Spelled out rather than guessed: only "true" and "false" are accepted.
+   */
+  DATABASE_PREPARED_STATEMENTS: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  /**
+   * Redis and object storage are not read by any code yet (queues and file ingestion are future work),
+   * so production does not need them. They are validated when present, and become required together
+   * with the feature that reads them.
+   */
+  REDIS_URL: z.string().url().optional(),
+  STORAGE_ENDPOINT: z.string().url().optional(),
+  STORAGE_ACCESS_KEY_ID: z.string().min(1).optional(),
+  STORAGE_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  STORAGE_BUCKET: z.string().min(1).optional(),
   AUTH_SECRET: z.string().min(1),
   /**
    * `dev` trusts an `x-principal-id` header verbatim (local development and

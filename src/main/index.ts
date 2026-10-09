@@ -3,7 +3,7 @@ import { buildServer } from '../infrastructure/http/server.js';
 import { createDatabaseClient } from '../infrastructure/database/client.js';
 
 const env = loadEnv();
-const { db, close } = createDatabaseClient(env.DATABASE_URL);
+const { db, close } = createDatabaseClient(env.DATABASE_URL, env);
 
 const app = await buildServer(env, db);
 
