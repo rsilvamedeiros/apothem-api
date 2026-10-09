@@ -11,12 +11,12 @@ Reference docs (`apothem-ai/docs/`):
 ## Rules enforced (and tested)
 
 - Any authenticated principal may create an organization and becomes its `owner` (active membership); both facts are audited.
-- Slugs are globally unique; a duplicate returns 409 and creates no membership or audit event. A concurrent duplicate that slips past the check is stopped by the database unique constraint.
+- Slugs are globally unique; a duplicate returns 409 and creates no membership or audit event, including when a concurrent request wins the race (the unique index decides and the loser gets 409).
 - Reading requires `organization.settings.read` through a resolved tenant context; a principal outside the organization is denied before reaching the service.
 
 ## Known limitation
 
-Organization and first-membership creation are two separate writes (no unit of work yet). A failure between them could leave an organization without an owner. Fix together with the transaction boundary work before onboarding real customers.
+Organization and first-membership creation are one atomic write (`OrganizationPort.createWithOwner`, a database transaction): either both exist afterwards or neither does, and the slug is free again after a failure. A slug taken by a concurrent request is reported as 409, not as an internal error. The two audit events are written right after the commit; if that write fails the organization is still usable but its creation is missing from the trail, which is the one remaining gap (audit shares no transaction with the module yet).
 
 ## Member management
 
