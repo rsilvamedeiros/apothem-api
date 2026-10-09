@@ -20,6 +20,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run test:coverage
       - run: npm run build
+      # Boots the built output the way production does: starts, answers, ignores the dev header, shuts down cleanly,
+      # and refuses unsafe configuration. Catches a broken start path or entrypoint before a deploy does.
+      - run: npx tsx infra/scripts/smoke-prod.ts
       # Fails if the committed OpenAPI spec is stale: apothem-ai vendors this
       # file, so it must always match the routes.
       - run: cp .env.example .env && npm run openapi:generate
