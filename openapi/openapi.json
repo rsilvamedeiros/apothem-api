@@ -6316,12 +6316,46 @@
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "sources": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "stepSequence": {
+                            "type": "integer"
+                          },
+                          "evidenceId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "section": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "ordinal": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "stepSequence",
+                          "evidenceId",
+                          "title",
+                          "section",
+                          "ordinal"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
                     "run",
                     "steps",
-                    "approvals"
+                    "approvals",
+                    "sources"
                   ],
                   "additionalProperties": false
                 }
